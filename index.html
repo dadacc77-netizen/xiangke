@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XiangKe Insight Engine</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg:#070B14;
+  --cyan:#00F0FF;
+  --green:#00FF66;
+  --red:#FF3366;
+}
+
+body {
+  margin:0;
+  background:var(--bg);
+  color:white;
+  font-family:'Inter',sans-serif;
+}
+
+/* 啟動畫面 */
+#boot {
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:#000;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+
+#boot-text {
+  color:var(--cyan);
+  font-family:monospace;
+  animation:blink 1s infinite;
+}
+
+@keyframes blink {
+  50%{opacity:.3;}
+}
+
+/* Header */
+header {
+  padding:15px 30px;
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #1e293b;
+}
+
+/* Layout */
+main {
+  display:grid;
+  grid-template-columns:260px 1fr 300px;
+  height:calc(100vh - 60px);
+}
+
+.panel {
+  padding:20px;
+  border-right:1px solid #1e293b;
+}
+
+.kpi { margin-bottom:15px; }
+
+/* Radar */
+.radar {
+  width:420px;
+  height:420px;
+  border-radius:50%;
+  border:1px solid var(--cyan);
+  position:relative;
+  margin:auto;
+}
+
+.scan {
+  position:absolute;
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 70%,rgba(0,240,255,.5));
+  animation:spin 4s linear infinite;
+}
+
+@keyframes spin {100%{transform:rotate(360deg)}}
+
+.blip {
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  position:absolute;
+  transform:translate(-50%,-50%);
+}
+
+/* AI */
+.ai-card {
+  background:#111827;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:10px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 開場 -->
+<div id="boot">
+  <div id="boot-text">Initializing XiangKe Engine...</div>
+</div>
+
+<header>
+  <div>🚀 XiangKe Insight Engine</div>
+  <div>● LIVE</div>
+</header>
+
+<main>
+
+<div class="panel">
+  <div class="kpi">營收：<span id="rev">0</span></div>
+  <div class="kpi">流量：<span id="tra">0</span></div>
+  <div class="kpi">風險：<span id="risk">0%</span></div>
+</div>
+
+<div class="panel" style="display:flex;align-items:center;justify-content:center;">
+  <div class="radar" id="radar">
+    <div class="scan"></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div id="ai"></div>
+</div>
+
+</main>
+
+<script>
+
+// 啟動畫面
+setTimeout(()=>{
+  const boot=document.getElementById("boot");
+  boot.style.opacity=0;
+  setTimeout(()=>boot.remove(),800);
+},2000);
+
+// 音效
+const sound=new Audio("https://www.soundjay.com/button/sounds/button-16.mp3");
+function playSound(){
+  sound.currentTime=0;
+  sound.play().catch(()=>{});
+}
+
+// 數據
+let stats={rev:1000000,tra:30000,risk:1.2};
+
+const SOURCES=["Threads","IG","Google","PTT"];
+const KEYWORDS=["玉荷包","芒果","雞排","火鍋","飲料"];
+
+function updateUI(){
+  rev.innerText=stats.rev.toLocaleString();
+  tra.innerText=stats.tra.toLocaleString();
+  risk.innerText=stats.risk.toFixed(2)+"%";
+}
+
+// AI
+async function getAI(msg){
+  try{
+    const res=await fetch("https://xiangke-api-production.up.railway.app/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:msg})
+    });
+    const data=await res.json();
+    if(data.reply) return data.reply;
+    throw"fail";
+  }catch{
+    return "🧠 AI分析：市場需求上升，建議增加曝光與庫存";
+  }
+}
+
+// 等級
+function getLevel(text){
+  if(text.includes("上升")) return["HIGH","#00FF66"];
+  if(text.includes("風險")) return["RISK","#FF3366"];
+  return["MID","#00F0FF"];
+}
+
+// 主流程
+function spawn(){
+
+  playSound();
+
+  const radar=document.getElementById("radar");
+
+  const x=Math.random()*400;
+  const y=Math.random()*400;
+
+  const blip=document.createElement("div");
+  blip.className="blip";
+  blip.style.left=x+"px";
+  blip.style.top=y+"px";
+
+  const isRisk=Math.random()>0.75;
+
+  blip.style.background=isRisk?"#FF3366":"#00FF66";
+
+  radar.appendChild(blip);
+  setTimeout(()=>blip.remove(),3000);
+
+  const keyword=KEYWORDS[Math.floor(Math.random()*KEYWORDS.length)];
+  const source=SOURCES[Math.floor(Math.random()*SOURCES.length)];
+
+  const msg=isRisk?keyword+"供應鏈風險":keyword+"搜尋上升";
+
+  const ai=document.getElementById("ai");
+
+  const loading=document.createElement("div");
+  loading.className="ai-card";
+  loading.innerText="🧠 分析中...";
+  ai.prepend(loading);
+
+  getAI(msg).then(res=>{
+
+    const [level,color]=getLevel(res);
+
+    const card=document.createElement("div");
+    card.className="ai-card";
+    card.style.borderLeft="3px solid "+color;
+
+    card.innerHTML=`
+      <div style="color:${color};font-size:12px;">
+        ● ${level} | ${source}
+      </div>
+      <div>${res}</div>
+      <div style="font-size:11px;color:gray;">#${keyword}</div>
+    `;
+
+    card.onclick=()=>{
+      alert("📊 詳細分析：\n\n"+res);
+    };
+
+    ai.replaceChild(card,loading);
+
+    if(ai.children.length>5){
+      ai.removeChild(ai.lastChild);
+    }
+
+  });
+
+  stats.rev+=10000;
+  stats.tra+=500;
+  stats.risk=isRisk?stats.risk+0.5:stats.risk-0.1;
+
+  updateUI();
+}
+
+setInterval(spawn,3500);
+updateUI();
+
+</script>
+
+</body>
+</html>
