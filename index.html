@@ -22,7 +22,6 @@ body {
   font-family:'Inter',sans-serif;
 }
 
-/* 啟動畫面 */
 #boot {
   position:fixed;
   width:100%;
@@ -44,7 +43,6 @@ body {
   50%{opacity:.3;}
 }
 
-/* Header */
 header {
   padding:15px 30px;
   display:flex;
@@ -52,7 +50,6 @@ header {
   border-bottom:1px solid #1e293b;
 }
 
-/* Layout */
 main {
   display:grid;
   grid-template-columns:260px 1fr 300px;
@@ -66,7 +63,6 @@ main {
 
 .kpi { margin-bottom:15px; }
 
-/* Radar */
 .radar {
   width:420px;
   height:420px;
@@ -95,7 +91,6 @@ main {
   transform:translate(-50%,-50%);
 }
 
-/* AI */
 .ai-card {
   background:#111827;
   padding:12px;
@@ -108,7 +103,6 @@ main {
 
 <body>
 
-<!-- 開場 -->
 <div id="boot">
   <div id="boot-text">Initializing XiangKe Engine...</div>
 </div>
@@ -117,6 +111,23 @@ main {
   <div>🚀 XiangKe Insight Engine</div>
   <div>● LIVE</div>
 </header>
+
+<!-- 🧠 產品介紹 -->
+<section style="padding:40px;text-align:center;border-bottom:1px solid #1e293b;">
+  <h1 style="font-size:32px;">🍽️ 饗客智擎</h1>
+  <p style="color:#94a3b8;margin-top:10px;">
+    即時分析市場趨勢，幫你快速做出最佳決策
+  </p>
+  <p style="margin-top:15px;">
+    系統會自動監測熱門關鍵字、流量變化與風險，
+    並透過 AI 提供即時建議
+  </p>
+  <div style="margin-top:25px;color:#00F0FF;">
+    ① 觀察雷達趨勢  
+    ② 查看 AI 分析卡片  
+    ③ 點擊查看詳細建議
+  </div>
+</section>
 
 <main>
 
@@ -133,28 +144,35 @@ main {
 </div>
 
 <div class="panel">
+
+  <!-- 🔥 總結 -->
+  <div class="ai-card" style="border-left:3px solid #00F0FF;">
+    <div style="color:#00F0FF;font-size:12px;">● SUMMARY</div>
+    <div>
+      目前市場趨勢穩定上升，建議增加曝光與備貨
+    </div>
+  </div>
+
   <div id="ai"></div>
+
 </div>
 
 </main>
 
 <script>
 
-// 啟動畫面
 setTimeout(()=>{
   const boot=document.getElementById("boot");
   boot.style.opacity=0;
   setTimeout(()=>boot.remove(),800);
 },2000);
 
-// 音效
 const sound=new Audio("https://www.soundjay.com/button/sounds/button-16.mp3");
 function playSound(){
   sound.currentTime=0;
   sound.play().catch(()=>{});
 }
 
-// 數據
 let stats={rev:1000000,tra:30000,risk:1.2};
 
 const SOURCES=["Threads","IG","Google","PTT"];
@@ -166,7 +184,6 @@ function updateUI(){
   risk.innerText=stats.risk.toFixed(2)+"%";
 }
 
-// AI
 async function getAI(msg){
   try{
     const res=await fetch("https://xiangke-api-production.up.railway.app/chat",{
@@ -182,14 +199,12 @@ async function getAI(msg){
   }
 }
 
-// 等級
 function getLevel(text){
   if(text.includes("上升")) return["HIGH","#00FF66"];
   if(text.includes("風險")) return["RISK","#FF3366"];
   return["MID","#00F0FF"];
 }
 
-// 主流程
 function spawn(){
 
   playSound();
