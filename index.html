@@ -3,13 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>饗客智擎 AI 雷達 - 混合雙擎進化版</title>
+<title>饗客智擎 AI 雷達 - 熱區系統版</title>
 <style>
-  /* 品牌基礎視覺設定 */
   body { background-color: #FFF8E7; margin: 0; font-family: sans-serif; color: #333; overflow-x: hidden; }
   header { padding: 15px; background: #222; color: #F2B705; text-align: center; border-bottom: 2px solid #F2B705; font-size: 1.2em; letter-spacing: 2px; }
 
-  /* Hybrid 佈局設計 */
   .hybrid-layout {
     display: flex;
     flex-wrap: wrap;
@@ -19,7 +17,6 @@
     padding: 0 20px;
   }
 
-  /* 左側：Canvas 雷達動畫區 */
   .radar-section {
     flex: 1 1 600px; 
     position: relative;
@@ -37,7 +34,6 @@
   
   canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-  /* 右側：DOM 資訊顯示區 */
   .info-section {
     flex: 1 1 350px; 
     display: flex;
@@ -53,7 +49,6 @@
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
   }
 
-  /* 操控區塊 */
   .controls { margin-bottom: 20px; display: flex; gap: 8px; }
   .controls input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; outline: none; }
   .controls button { padding: 10px 20px; background-color: #F2B705; color: #222; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
@@ -64,7 +59,7 @@
 </head>
 <body>
 
-<header><b>🍽️ 饗客智擎（AI市場雷達 - 第一階段：數據真實感升級）</b></header>
+<header><b>🍽️ 饗客智擎（AI市場雷達 - 第二階段：熱區系統升級）</b></header>
 
 <div class="hybrid-layout">
   <div class="radar-section" id="radar-container">
@@ -90,11 +85,12 @@
 
 <script>
 // ==========================================
-// 1. 統一 State 管理
+// 1. 統一 State 管理 (新增 Heatmap 核心資料)
 // ==========================================
 const radarState = {
   angle: 0,
   pings: [],
+  heatmap: [], // 🔥 任務一：建立記憶系統 [ {x, y, intensity} ]
   rankings: {},
   lastHitZone: null,
   cities: [
@@ -143,6 +139,16 @@ function detectHitByAngle() {
   }
 }
 
+// 🔥 任務四：熱度衰減系統 (每 2 秒執行一次)
+setInterval(() => {
+  for (let i = radarState.heatmap.length - 1; i >= 0; i--) {
+    radarState.heatmap[i].intensity -= 0.1;
+    if (radarState.heatmap[i].intensity <= 0) {
+      radarState.heatmap.splice(i, 1);
+    }
+  }
+}, 2000);
+
 function drawRadar() {
   const cw = canvas.width;
   const ch = canvas.height;
@@ -153,7 +159,25 @@ function drawRadar() {
   ctx.fillStyle = 'rgba(26, 26, 26, 0.2)'; 
   ctx.fillRect(0, 0, cw, ch);
 
-  ctx.strokeStyle = 'rgba(242, 183, 5, 0.1)';
+  // 🔥 任務五：Canvas 顯示熱區 (渲染背景)
+  radarState.heatmap.forEach(point => {
+    const heatX = point.x * cw;
+    const heatY = point.y * ch;
+    const size = 30 + (point.intensity * 10); // 隨熱度變大
+    const alpha = Math.min(point.intensity * 0.3, 0.6); // 隨熱度變亮
+    
+    const grad = ctx.createRadialGradient(heatX, heatY, 0, heatX, heatY, size);
+    grad.addColorStop(0, `rgba(242, 183, 5, ${alpha})`);
+    grad.addColorStop(1, 'rgba(242, 183, 5, 0)');
+    
+    ctx.beginPath();
+    ctx.arc(heatX, heatY, size, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  });
+
+  // 背景網格
+  ctx.strokeStyle = 'rgba(242, 183, 5, 0.05)';
   ctx.lineWidth = 1;
   for(let i = 1; i <= 4; i++) {
     ctx.beginPath();
@@ -164,6 +188,7 @@ function drawRadar() {
   radarState.angle += 0.025;
   detectHitByAngle();
 
+  // 掃描線
   ctx.save();
   ctx.translate(centerX, centerY);
   ctx.rotate(radarState.angle);
@@ -178,6 +203,7 @@ function drawRadar() {
   ctx.fill();
   ctx.restore();
 
+  // 波紋動畫
   for (let i = radarState.pings.length - 1; i >= 0; i--) {
     const p = radarState.pings[i];
     p.radius += 1.8;
@@ -196,7 +222,7 @@ function drawRadar() {
 }
 
 // ==========================================
-// 3. UI 渲染引擎 (DOM) - 第一階段升級核心
+// 3. UI 渲染引擎 (DOM)
 // ==========================================
 function updateDOM(topic, score, source = "雷達掃描", cityName = "全台監控") {
   let trendColor = "#F59E0B";
@@ -277,7 +303,21 @@ window.triggerScan = function(manualTopic = null, isManualSearch = false, target
     inputElem.value = ""; 
   }
 
+  // 波動動畫
   radarState.pings.push({ x: city.x, y: city.y, radius: 0, alpha: 1 });
+
+  // 🔥 任務二與三：建立與累積熱度
+  // 檢查是否已有接近該城市的熱點 (距離 0.05 內)
+  const existingPoint = radarState.heatmap.find(p => 
+    Math.abs(p.x - city.x) < 0.05 && Math.abs(p.y - city.y) < 0.05
+  );
+
+  if (existingPoint) {
+    existingPoint.intensity += 1; // 任務三：熱度累積
+  } else {
+    radarState.heatmap.push({ x: city.x, y: city.y, intensity: 1 }); // 任務二：新增熱點
+  }
+
   updateDOM(topic, score, source, city.name);
 }
 
