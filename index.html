@@ -3,13 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>饗客智擎 AI 雷達 - 清晰層次版</title>
+<title>饗客智擎 AI 雷達 - 點擊互動版</title>
 <style>
-  /* 品牌基礎視覺 */
   body { background-color: #FFF8E7; margin: 0; font-family: sans-serif; color: #333; overflow-x: hidden; }
   header { padding: 15px; background: #222; color: #F2B705; text-align: center; border-bottom: 2px solid #F2B705; font-size: 1.2em; letter-spacing: 2px; }
 
-  /* Hybrid 佈局設計 */
   .hybrid-layout {
     display: flex;
     flex-wrap: wrap;
@@ -19,7 +17,6 @@
     padding: 0 20px;
   }
 
-  /* 左側：動畫引擎區 */
   .radar-section {
     flex: 1 1 600px; 
     position: relative;
@@ -33,11 +30,11 @@
     overflow: hidden;
     border: 2px solid #333;
     box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
+    cursor: crosshair; /* 讓滑鼠變成準心感 */
   }
   
-  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: auto; }
 
-  /* 右側：DOM 資訊顯示區 */
   .info-section {
     flex: 1 1 350px; 
     display: flex;
@@ -63,7 +60,7 @@
 </head>
 <body>
 
-<header><b>🍽️ 饗客智擎（AI市場雷達 - 清晰層次優化版）</b></header>
+<header><b>🍽️ 饗客智擎（AI市場雷達 - 第三階段：互動點擊系統）</b></header>
 
 <div class="hybrid-layout">
   <div class="radar-section" id="radar-container">
@@ -73,11 +70,11 @@
   <div class="info-section">
     <div class="card">
       <div class="controls">
-        <input type="text" id="keywordInput" placeholder="輸入關鍵字偵測...">
+        <input type="text" id="keywordInput" placeholder="輸入關鍵字進行偵測...">
         <button onclick="triggerScan(null, true)">啟動掃描</button>
       </div>
-      <h3 style="margin-top:0;">📡 實時攔截訊號</h3>
-      <div id="intercept-content" style="color:#666;">雷達監控中...</div>
+      <h3 style="margin-top:0;">📡 戰略分析面板</h3>
+      <div id="intercept-content" style="color:#666;">點擊地圖熱區以分析詳情...</div>
     </div>
     
     <div class="card">
@@ -89,7 +86,7 @@
 
 <script>
 // ==========================================
-// 1. 系統狀態管理
+// 1. 統一 State 管理
 // ==========================================
 const radarState = {
   angle: 0,
@@ -107,9 +104,7 @@ const radarState = {
   searchHistory: []
 };
 
-// 🔥 任務三：新增掃描觸發冷卻時間
 let lastHeatTime = 0;
-
 const canvas = document.getElementById('radarCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -122,15 +117,66 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// 熱度衰減
+// ==========================================
+// 2. 互動監聽系統 (🔥 第三階段核心)
+// ==========================================
+
+canvas.onclick = function(event) {
+  const rect = canvas.getBoundingClientRect();
+  // 取得相對比例座標 (0-1)
+  const clickX = (event.clientX - rect.left) / canvas.width;
+  const clickY = (event.clientY - rect.top) / canvas.height;
+
+  // 尋找最近的城市點
+  let closestCity = null;
+  let minDistance = 100;
+
+  radarState.cities.forEach(city => {
+    const dx = clickX - city.x;
+    const dy = clickY - city.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestCity = city;
+    }
+  });
+
+  // 判斷是否命中 (Threshold 0.1)
+  if (closestCity && minDistance < 0.1) {
+    // 取得該處熱度 (intensity)
+    const heatPoint = radarState.heatmap.find(h => 
+      Math.abs(h.x - closestCity.x) < 0.05
+    );
+    const intensityValue = heatPoint ? heatPoint.score || Math.floor(heatPoint.intensity * 20 + 60) : 65;
+
+    // 🔥 ⑤ 視覺回饋：增加強波紋
+    radarState.pings.push({ 
+      x: closestCity.x, 
+      y: closestCity.y, 
+      radius: 0, 
+      alpha: 1.2 // 更強的初始亮度
+    });
+
+    // 🔥 ③ & ④：觸發分析並顯示
+    updateDOM(
+      `📍 探針掃描：${closestCity.name} 區`, 
+      intensityValue, 
+      "主動偵測", 
+      closestCity.name,
+      true // 標註為手動點擊
+    );
+  }
+};
+
+// ==========================================
+// 3. 核心渲染管線
+// ==========================================
+
 setInterval(() => {
   radarState.heatmap.forEach(h => h.intensity -= 0.1);
   radarState.heatmap = radarState.heatmap.filter(h => h.intensity > 0);
 }, 2000);
 
-// ==========================================
-// 2. 核心渲染管線
-// ==========================================
 function drawRadar() {
   const cw = canvas.width;
   const ch = canvas.height;
@@ -142,12 +188,12 @@ function drawRadar() {
 
   ctx.clearRect(0, 0, cw, ch);
 
-  // 第一層：Heatmap 熱區 (優化：🔥 ② 縮小範圍 ＆ 降低透明度)
+  // 第一層：Heatmap 熱區
   radarState.heatmap.forEach(p => {
     const x = p.x * cw;
     const y = p.y * ch;
-    const size = 15 + (p.intensity * 12); // 修復：縮小視覺半徑
-    const alpha = Math.min(p.intensity * 0.25, 0.5); // 優化：降低透明度
+    const size = 15 + (p.intensity * 12);
+    const alpha = Math.min(p.intensity * 0.25, 0.5);
     
     const grad = ctx.createRadialGradient(x, y, 0, x, y, size);
     grad.addColorStop(0, `rgba(242, 183, 5, ${alpha})`);
@@ -168,7 +214,7 @@ function drawRadar() {
     ctx.stroke();
   }
 
-  // 第三層：雷達掃描線與偵測
+  // 第三層：雷達掃描
   radarState.angle += 0.025;
   detectHitByAngle(); 
 
@@ -186,7 +232,7 @@ function drawRadar() {
   ctx.fill();
   ctx.restore();
 
-  // 第四層：波紋動畫
+  // 第四層：波紋
   for (let i = radarState.pings.length - 1; i >= 0; i--) {
     const p = radarState.pings[i];
     p.radius += 2.2;
@@ -205,17 +251,16 @@ function drawRadar() {
   requestAnimationFrame(drawRadar);
 }
 
-// 🔥 任務三：命中偵測（加入 1000ms 冷卻）
 function detectHitByAngle() {
   const now = Date.now();
-  if (now - lastHeatTime < 1000) return; // 1秒內不重複觸發
+  if (now - lastHeatTime < 1000) return;
 
   const currentAngle = radarState.angle % (Math.PI * 2);
   const hitCity = radarState.cities.find(c => Math.abs(currentAngle - c.targetAngle) < 0.12);
 
   if (hitCity && radarState.lastHitZone !== hitCity.name) {
     radarState.lastHitZone = hitCity.name;
-    lastHeatTime = now; // 更新最後觸發時間
+    lastHeatTime = now;
     triggerScan(null, false, hitCity);
   } else if (!hitCity) {
     radarState.lastHitZone = null;
@@ -223,22 +268,25 @@ function detectHitByAngle() {
 }
 
 // ==========================================
-// 3. UI 與 數據處理
+// 4. UI 渲染引擎
 // ==========================================
-function updateDOM(topic, score, source, cityName) {
+function updateDOM(topic, score, source, cityName, isClick = false) {
   let color = score >= 90 ? "#27ae60" : (score < 75 ? "#e74c3c" : "#F59E0B");
+  let prefix = isClick ? "🎯 " : "📡 ";
+  let statusText = score >= 90 ? "爆發性增長" : (score < 75 ? "低溫警戒" : "市場恆溫");
+
   document.getElementById('intercept-content').innerHTML = `
-    <div style="font-size:12px; color:#888;">📡 來源：${source} ｜ ${cityName}</div>
+    <div style="font-size:12px; color:#888;">${prefix} 來源：${source} ｜ ${cityName}</div>
     <b style="font-size:1.1em;">${topic}</b>
     <div style="font-size:36px; color:${color}; font-weight:bold; margin: 8px 0;">${score}</div>
     <div style="color:${color}; font-weight:bold; font-size:13px; border-left: 3px solid ${color}; padding-left: 10px;">
-      AI 分析：市場聲量正常，維持監控。
+      AI 分析：[${statusText}] 建議根據當地情勢進行戰術部署。
     </div>
   `;
 
   radarState.rankings[topic] = score;
   const sorted = Object.entries(radarState.rankings).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  let html = "<b>🔥 戰略熱度榜</b><br><br>";
+  let html = "<b>🔥 戰略機會熱度榜</b><br><br>";
   sorted.forEach((item, i) => {
     html += `<div class="ranking-row"><span>${["🥇","🥈","🥉"][i]||"▪️"} ${item[0]}</span> <b>${item[1]}</b></div>`;
   });
@@ -254,21 +302,18 @@ window.triggerScan = function(manualTopic = null, isManualSearch = false, target
   const score = Math.floor(Math.random() * 40) + 60;
   const source = isManualSearch ? "手動偵測" : radarState.sources[Math.floor(Math.random() * radarState.sources.length)];
 
-  // 1. 動畫
   radarState.pings.push({ x: city.x, y: city.y, radius: 0, alpha: 1 });
 
-  // 🔥 任務一：降低熱度成長
   const existing = radarState.heatmap.find(p => Math.abs(p.x - city.x) < 0.05);
   if (existing) {
-    existing.intensity = Math.min(existing.intensity + 0.4, 2.5); // 修復：壓低數值
+    existing.intensity = Math.min(existing.intensity + 0.4, 2.5);
+    existing.score = score; // 紀錄最新分數供點擊顯示
   } else {
-    radarState.heatmap.push({ x: city.x, y: city.y, intensity: 0.8 });
+    radarState.heatmap.push({ x: city.x, y: city.y, intensity: 0.8, score: score });
   }
 
-  // 2. UI 更新
   updateDOM(topic, score, source, city.name);
 
-  // 3. 搜尋紀錄
   if(isManualSearch && inputValue) {
     if(!radarState.searchHistory.includes(inputValue)) {
       radarState.searchHistory.unshift(inputValue);
@@ -282,7 +327,6 @@ document.getElementById('keywordInput')?.addEventListener('keypress', (e) => {
   if(e.key === 'Enter') triggerScan(null, true);
 });
 
-// 啟動
 requestAnimationFrame(drawRadar);
 setTimeout(() => triggerScan(), 500);
 
