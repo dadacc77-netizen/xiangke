@@ -1,15 +1,26 @@
-var map;
+vlet map;
+let mapReady = false;
 
-setTimeout(()=>{
-  map = L.map('map').setView([23.7,121],7);
+// 🔥 安全初始化（等 DOM 完全好）
+window.addEventListener("load", ()=>{
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  setTimeout(()=>{
 
-  setTimeout(()=>map.invalidateSize(),300);
+    map = L.map('map').setView([23.7,121],7);
 
-},300);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// 城市 + 食物
+    // ✅ 關鍵修復
+    setTimeout(()=>{
+      map.invalidateSize();
+      mapReady = true;
+    },500);
+
+  },300);
+
+});
+
+// 資料
 const cities=[
   {name:"台北",lat:25.03,lng:121.56},
   {name:"台中",lat:24.15,lng:120.67},
@@ -18,176 +29,58 @@ const cities=[
 
 const foods=["雞排","飲料","火鍋","拉麵","甜點"];
 
-// 📊 排行榜資料
-let rankingData={};
-
-// 🤖 AI
-async function getAI(msg){
-  try{
-    const res=await fetch("https://xiangke-api-production.up.railway.app/chat",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({message:msg})
-    });
-    const data=await res.json();
-    return data.reply || "市場上升";
-  }catch{
-    return "市場需求上升";
-  }
-}
-
-// 🔥 主結果
+// 🔥 主結果（穩定版）
 function showResult(title,text){
 
   const main=document.getElementById("mainResult");
 
-  main.innerHTML="🚨 發現市場機會中...";
+  main.innerHTML="🔄 分析中...";
 
   setTimeout(()=>{
 
     const score = Math.floor(Math.random()*40)+60;
 
-    let level="🟡 可觀察";
-    let action="先測試";
-
-    if(score>85){
-      level="🔥 爆紅機會";
-      action="立刻投入";
-    }else if(score<70){
-      level="⚠️ 風險偏高";
-      action="先觀望";
-    }
-
     main.innerHTML=`
       <div style="font-size:22px;font-weight:bold;">${title}</div>
-      <div style="font-size:40px;color:var(--primary);">${score}分</div>
-      <div>${level}</div>
-      <div style="margin:10px 0;">${text}</div>
-      <div style="background:#fff3cd;padding:10px;border-radius:8px;">
-        👉 建議：${action}
-      </div>
+      <div style="font-size:36px;color:var(--primary);">${score}分</div>
+      <div style="margin-top:10px;">${text}</div>
     `;
 
-    updateRanking(title,score);
-
-  },500);
+  },300);
 }
 
-// 📊 排行榜更新
-function updateRanking(name,score){
-
-  rankingData[name]=score;
-
-  const sorted = Object.entries(rankingData)
-    .sort((a,b)=>b[1]-a[1])
-    .slice(0,5);
-
-  let html="<b>🔥 熱門排行榜</b><br>";
-
-  sorted.forEach((item,i)=>{
-    html+=`${i+1}. ${item[0]} (${item[1]}分)<br>`;
-  });
-
-  document.getElementById("ranking").innerHTML=html;
-}
-
-// 📈 即時數據（像股票）
-function updateTicker(){
-
-  const ticker=document.getElementById("ticker");
-
-  const food=foods[Math.floor(Math.random()*foods.length)];
-  const change=(Math.random()*10-5).toFixed(1);
-
-  ticker.innerHTML=`
-    📈 ${food} ${change>0?"+":""}${change}%
-  `;
-}
-
-setInterval(updateTicker,2000);
-
-// 📰 模擬新聞（可接 Google Alerts）
-function pushNews(){
-
-  const newsBox=document.getElementById("news");
-
-  const food=foods[Math.floor(Math.random()*foods.length)];
-
-  const msg=`📰 ${food} 熱度上升，討論度增加`;
-
-  const div=document.createElement("div");
-  div.innerText=msg;
-
-  newsBox.prepend(div);
-
-  if(newsBox.children.length>5){
-    newsBox.removeChild(newsBox.lastChild);
-  }
-}
-
-setInterval(pushNews,4000);
-
-// 📊 卡片
-function addCard(title,text){
-
-  const ai=document.getElementById("ai");
-
-  const source = ["新聞","PTT","IG","Threads"]
-    [Math.floor(Math.random()*4)];
-
-  const card=document.createElement("div");
-  card.className="ai-card";
-
-  card.innerHTML=`
-    <b>${title}</b><br>
-    ${text}
-    <div style="font-size:12px;color:gray;">
-      來源：${source}
-    </div>
-  `;
-
-  ai.prepend(card);
-}
-
-// 🗺️ 地圖雷達
+// 🔥 地圖事件（降頻版本，避免炸）
 function spawnMapEvent(){
 
-  if(!map) return;
+  if(!mapReady) return;
 
   const city=cities[Math.floor(Math.random()*cities.length)];
   const food=foods[Math.floor(Math.random()*foods.length)];
 
   const marker=L.circleMarker([city.lat,city.lng],{
-    radius:10,
+    radius:8,
     color:"orange",
     fillOpacity:0.7
   }).addTo(map);
 
   marker.on("click",()=>{
-
-    alert("🔥 發現機會："+food);
-
-    getAI(food+" 在 "+city.name+" 趨勢").then(res=>{
-      showResult(city.name+"｜"+food,res);
-      addCard(food,res);
-    });
-
+    showResult(city.name+"｜"+food,"市場關注上升");
   });
 
-  setTimeout(()=>map.removeLayer(marker),5000);
+  setTimeout(()=>{
+    map.removeLayer(marker);
+  },4000);
 }
 
-setInterval(spawnMapEvent,3000);
+// ❗ 降頻（關鍵）
+setInterval(spawnMapEvent,4000);
 
-// 🔍 搜尋
+// 🔍 搜尋（簡化穩定版）
 function searchKeyword(){
   const input=document.getElementById("keywordInput").value;
   if(!input) return;
 
-  getAI(input+" 市場趨勢").then(res=>{
-    showResult(input,res);
-    addCard(input,res);
-  });
+  showResult(input,"市場需求上升");
 }
 
 // Enter
