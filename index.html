@@ -1,88 +1,225 @@
-window.onload = function(){
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>饗客智擎 AI 雷達 - 混合雙擎版</title>
+<style>
+  /* 品牌基礎視覺 */
+  body { background-color: #FFF8E7; margin: 0; font-family: sans-serif; color: #333; }
+  header { padding: 15px; background: #222; color: #F2B705; text-align: center; border-bottom: 2px solid #F2B705; font-size: 1.2em; letter-spacing: 2px; }
 
-  const cities=[
-    {name:"台北",x:50,y:20},
-    {name:"台中",x:45,y:45},
-    {name:"高雄",x:48,y:75}
-  ];
-
-  const foods=["雞排","飲料","火鍋","甜點"];
-  let rankingData={};
-  const map=document.getElementById("map");
-
-  // 錯誤防禦：確認地圖元素確實存在才執行，避免崩潰
-  if(map) {
-    cities.forEach(city=>{
-      const dot=document.createElement("div");
-      dot.className="dot";
-      dot.style.left=city.x+"%";
-      dot.style.top=city.y+"%";
-      dot.style.background="orange";
-
-      dot.onclick=()=>{
-        const food=foods[Math.floor(Math.random()*foods.length)];
-        showResult(city.name+"｜"+food);
-      };
-
-      map.appendChild(dot);
-    });
+  /* 左雷達、右資訊的 Hybrid 佈局 (使用 Flexbox 並排) */
+  .hybrid-layout {
+    display: flex;
+    max-width: 1400px;
+    margin: 20px auto;
+    gap: 20px;
+    padding: 0 20px;
+    height: 600px;
   }
 
-  // 顯示結果與色彩判定
-  function showResult(title){
-    const score = Math.floor(Math.random()*40)+60;
-    let color = score>85?"green":score<70?"red":"#F59E0B";
+  /* 左側：Canvas 雷達動畫區 (60% 空間) */
+  .radar-section {
+    flex: 6; 
+    position: relative;
+    background-color: #1a1a1a;
+    background-image: url('https://upload.wikimedia.org/wikipedia/commons/7/79/Taiwan_location_map.svg');
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid #333;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+  }
+  
+  /* Canvas 畫布覆蓋於背景圖之上 */
+  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  /* 右側：DOM 資訊顯示區 (40% 空間) */
+  .info-section {
+    flex: 4; 
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    border-top: 5px solid #F2B705;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* 操控區塊 */
+  .controls { margin-bottom: 15px; display: flex; gap: 10px; }
+  .controls input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em;}
+  .controls button { padding: 10px 15px; background-color: #F2B705; color: #222; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s;}
+  .controls button:hover { background-color: #d19b00; }
+  
+  .ranking-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #eee; font-size: 1.1em;}
+</style>
+</head>
+<body>
+
+<header><b>🍽️ 饗客智擎（Hybrid 混合雙擎穩定版）</b></header>
+
+<div class="hybrid-layout">
+  <div class="radar-section" id="radar-container">
+    <canvas id="radarCanvas"></canvas>
+  </div>
+
+  <div class="info-section">
+    <div class="card">
+      <div class="controls">
+        <input type="text" id="keywordInput" placeholder="輸入關鍵字...">
+        <button onclick="triggerScan()">系統掃描</button>
+      </div>
+      <h3>📡 實時攔截訊號</h3>
+      <div id="intercept-content" style="color:#666;">系統待命掃描中...</div>
+    </div>
     
-    const resultContainer = document.getElementById("mainResult");
-    if(resultContainer) {
-       resultContainer.innerHTML=`
-        <b>${title}</b><br>
-        <div style="font-size:30px;color:${color}">
-          ${score}分
-        </div>
-      `;
+    <div class="card">
+      <h3>🔥 戰略機會熱度榜</h3>
+      <div id="ranking-content">資料庫建置中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 1. 統一 State 管理 (DOM 與 Canvas 共用)
+// ==========================================
+const radarState = {
+  angle: 0,
+  pings: [],
+  rankings: {},
+  // 內建核心品牌資產字庫
+  keywords: ["尋找高雄宵夜", "黃金三角切法", "獨門死神辣椒秘方", "炸 3 分鐘定律"]
+};
+
+// ==========================================
+// 2. 動畫引擎 (僅負責 Canvas 視覺渲染)
+// ==========================================
+const canvas = document.getElementById('radarCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  if(!canvas.parentElement) return;
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+// 初始校正畫布尺寸
+setTimeout(resizeCanvas, 50);
+
+function drawRadar() {
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const centerX = cw / 2;
+  const centerY = ch / 2;
+  const radius = Math.min(cw, ch) * 0.85;
+
+  ctx.clearRect(0, 0, cw, ch);
+
+  // 繪製掃描扇形
+  radarState.angle += 0.025;
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(radarState.angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, radius, 0, -0.4);
+  ctx.lineTo(0, 0);
+  const gradient = ctx.createLinearGradient(0, 0, radius, 0);
+  gradient.addColorStop(0, 'rgba(242, 183, 5, 0.4)');
+  gradient.addColorStop(1, 'rgba(242, 183, 5, 0)');
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.restore();
+
+  // 繪製動態資料波紋
+  for (let i = radarState.pings.length - 1; i >= 0; i--) {
+    const p = radarState.pings[i];
+    p.radius += 1.5;
+    p.alpha -= 0.02;
+    
+    if (p.alpha <= 0) {
+      radarState.pings.splice(i, 1);
+      continue;
     }
-    updateRanking(title,score);
-  }
-
-  // 排行榜更新
-  function updateRanking(name,score){
-    rankingData[name]=score;
-    const sorted = Object.entries(rankingData)
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,5);
-
-    let html="<b>🔥 熱門排行榜</b><br>";
-    sorted.forEach((item,i)=>{
-      html+=`${["🥇","🥈","🥉"][i]||""} ${item[0]} (${item[1]}分)<br>`;
-    });
     
-    const rankingContainer = document.getElementById("ranking");
-    if(rankingContainer) rankingContainer.innerHTML=html;
+    ctx.beginPath();
+    ctx.arc(p.x * cw, p.y * ch, p.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(242, 183, 5, ${p.alpha})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 
-  // 搜尋功能
-  window.searchKeyword=function(){
-    const inputElem = document.getElementById("keywordInput");
-    if(!inputElem || !inputElem.value) return;
-    showResult("🔍 "+inputElem.value);
-  }
+  requestAnimationFrame(drawRadar);
+}
 
-  // 鍵盤監聽：使用可選串連 (?.) 防範 null 崩潰
-  document.getElementById("keywordInput")?.addEventListener("keypress",function(e){
-    if(e.key==="Enter") searchKeyword();
+// ==========================================
+// 3. UI 渲染引擎 (僅負責更新 DOM 資訊)
+// ==========================================
+function updateDOM(topic, score) {
+  let color = score > 85 ? "green" : score < 70 ? "red" : "#F59E0B";
+  
+  // 更新攔截面板，並確保文案符合高質感與專業度要求
+  document.getElementById('intercept-content').innerHTML = `
+    <b style="font-size:1.1em;">鎖定目標：</b>${topic}<br>
+    <div style="font-size:38px; color:${color}; margin: 15px 0; font-weight:bold;">${score} 點</div>
+    <span style="color:${color}; font-weight:bold;">分析：物理優勢達成 100% 醬汁吸附，又臭又香。</span>
+  `;
+
+  // 更新排行榜陣列
+  radarState.rankings[topic] = score;
+  const sorted = Object.entries(radarState.rankings).sort((a,b) => b[1]-a[1]).slice(0, 5);
+  
+  let html = "";
+  sorted.forEach((item, index) => {
+    let medal = ["🥇", "🥈", "🥉"][index] || "▪️";
+    html += `<div class="ranking-row"><span>${medal} ${item[0]}</span> <b>${item[1]}</b></div>`;
+  });
+  document.getElementById('ranking-content').innerHTML = html;
+}
+
+// ==========================================
+// 4. 資料橋樑 (串接 Canvas 與 DOM)
+// ==========================================
+window.triggerScan = function(manualTopic = null) {
+  const input = document.getElementById('keywordInput').value;
+  const topic = manualTopic || input || radarState.keywords[Math.floor(Math.random() * radarState.keywords.length)];
+  const score = Math.floor(Math.random() * 40) + 60;
+
+  // 對 Canvas 下達動畫指令：在隨機座標產生波紋
+  radarState.pings.push({
+    x: 0.2 + Math.random() * 0.6, 
+    y: 0.2 + Math.random() * 0.6, 
+    radius: 0, 
+    alpha: 1
   });
 
-  // 封裝自動隨機邏輯
-  function triggerRandomEvent() {
-    const city=cities[Math.floor(Math.random()*cities.length)];
-    const food=foods[Math.floor(Math.random()*foods.length)];
-    showResult(city.name+"｜"+food);
-  }
+  // 對 DOM 下達文字渲染指令
+  updateDOM(topic, score);
+  
+  // 清空輸入框
+  document.getElementById('keywordInput').value = "";
+}
 
-  // 破除 6 秒真空期：載入時立即強制執行一次
-  triggerRandomEvent();
+// 支援 Enter 鍵掃描
+document.getElementById('keywordInput').addEventListener('keypress', (e) => {
+  if(e.key === 'Enter') triggerScan();
+});
 
-  // 自動跑（低頻）
-  setInterval(triggerRandomEvent, 6000);
-};
+// 啟動系統渲染與首次掃描
+requestAnimationFrame(drawRadar);
+triggerScan("啟動系統自動化掃描程序...");
+
+</script>
+</body>
+</html>
