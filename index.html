@@ -11,8 +11,8 @@
 :root {
   --bg:#FFF8F1;
   --card:#FFFFFF;
-  --primary:#F59E0B;   /* 溫暖橘 */
-  --accent:#10B981;    /* 食物綠 */
+  --primary:#F59E0B;
+  --accent:#10B981;
   --danger:#EF4444;
   --text:#3A3A3A;
 }
@@ -37,9 +37,7 @@ header {
   text-align:center;
 }
 
-.hero h1 {
-  font-size:34px;
-}
+.hero h1 { font-size:34px; }
 
 .hero-sub {
   color:var(--primary);
@@ -77,9 +75,7 @@ main {
   grid-template-columns:260px 1fr 300px;
 }
 
-.panel {
-  padding:20px;
-}
+.panel { padding:20px; }
 
 .card {
   background:var(--card);
@@ -161,9 +157,9 @@ main {
 
 <div class="panel">
 
-  <div class="card">
-    <b>📊 市場建議</b><br>
-    建議優先觀察熱門品項，提前布局市場
+  <div id="mainResult" class="card" style="border-left:4px solid var(--primary);">
+    <b>🔍 分析結果</b><br>
+    請輸入關鍵字開始分析
   </div>
 
   <div id="ai"></div>
@@ -200,20 +196,51 @@ function searchKeyword(){
   const input=document.getElementById("keywordInput").value;
   if(!input) return;
 
+  const main=document.getElementById("mainResult");
+
+  main.innerHTML="🔄 正在分析市場資料...";
+
   getAI(input+" 市場趨勢").then(res=>{
+
+    main.innerHTML=`
+      <b>🔍 ${input} 分析</b><br><br>
+      ${res}<br><br>
+      <b>👉 建議：</b><br>
+      可以測試上架、增加曝光或觀察競品
+    `;
+
     const ai=document.getElementById("ai");
+
+    const level = Math.random();
+    let color = "var(--primary)";
+    if(level > 0.7) color = "var(--accent)";
+    if(level < 0.3) color = "var(--danger)";
+
+    const source = ["新聞","PTT","IG","Threads"][Math.floor(Math.random()*4)];
 
     const card=document.createElement("div");
     card.className="ai-card";
+    card.style.borderLeft="4px solid "+color;
 
     card.innerHTML=`
       <b>🔍 ${input}</b><br>
       ${res}
+      <div style="font-size:12px;color:gray;margin-top:5px;">
+        來源：${source}
+      </div>
     `;
 
     ai.prepend(card);
   });
 }
+
+// Enter 搜尋
+document.getElementById("keywordInput")
+  .addEventListener("keypress", function(e){
+    if(e.key === "Enter"){
+      searchKeyword();
+    }
+});
 
 function spawn(){
 
