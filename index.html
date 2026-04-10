@@ -1,1 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XiangKe 穩定進化版</title>
 
+<style>
+body { margin:0; font-family:sans-serif; background:#FFF8F1; }
+
+header {
+  padding:15px;
+  background:white;
+  border-bottom:1px solid #eee;
+}
+
+.hero { text-align:center; padding:20px; }
+
+#map {
+  height:400px;
+  position:relative;
+  background:url('https://upload.wikimedia.org/wikipedia/commons/7/79/Taiwan_location_map.svg') center/contain no-repeat;
+}
+
+.dot {
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  position:absolute;
+  transform:translate(-50%,-50%);
+  cursor:pointer;
+}
+
+main {
+  display:grid;
+  grid-template-columns:1fr 320px;
+}
+
+.panel { padding:20px; }
+
+.card {
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:10px;
+  transition:0.3s;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <b>🍽️ 饗客智擎（穩定進化版）</b>
+</header>
+
+<section class="hero">
+  <input id="keywordInput" placeholder="輸入關鍵字">
+  <button onclick="searchKeyword()">搜尋</button>
+</section>
+
+<main>
+
+<div class="panel">
+  <div id="map"></div>
+</div>
+
+<div class="panel">
+  <div id="mainResult" class="card">系統運作中...</div>
+  <div id="ranking" class="card">🔥 排行榜</div>
+</div>
+
+</main>
+
+<script>
+
+// 固定城市
+const cities=[
+  {name:"台北",x:50,y:20},
+  {name:"台中",x:45,y:45},
+  {name:"高雄",x:48,y:75}
+];
+
+const foods=["雞排","飲料","火鍋","甜點"];
+
+let rankingData={};
+
+// 🔥 初始化（固定點）
+function init(){
+
+  const map=document.getElementById("map");
+
+  cities.forEach(city=>{
+    const dot=document.createElement("div");
+    dot.className="dot";
+
+    dot.style.left=city.x+"%";
+    dot.style.top=city.y+"%";
+    dot.style.background="orange";
+
+    dot.onclick=()=>{
+      const food=foods[Math.floor(Math.random()*foods.length)];
+      showResult(city.name+"｜"+food);
+    };
+
+    map.appendChild(dot);
+  });
+
+}
+
+// 🔥 顯示結果
+function showResult(title){
+
+  const score = Math.floor(Math.random()*40)+60;
+
+  let color = score>85?"green":score<70?"red":"#F59E0B";
+
+  document.getElementById("mainResult").innerHTML=`
+    <b>${title}</b><br>
+    <div style="font-size:30px;color:${color}">
+      ${score}分
+    </div>
+  `;
+
+  updateRanking(title,score);
+}
+
+// 📊 排行榜
+function updateRanking(name,score){
+
+  rankingData[name]=score;
+
+  const sorted = Object.entries(rankingData)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,5);
+
+  let html="<b>🔥 熱門排行榜</b><br>";
+
+  sorted.forEach((item,i)=>{
+    html+=`${["🥇","🥈","🥉"][i]||""} ${item[0]} (${item[1]}分)<br>`;
+  });
+
+  document.getElementById("ranking").innerHTML=html;
+}
+
+// 🔥 安全動態（關鍵）
+function autoRun(){
+
+  const city=cities[Math.floor(Math.random()*cities.length)];
+  const food=foods[Math.floor(Math.random()*foods.length)];
+
+  showResult(city.name+"｜"+food);
+}
+
+// 每6秒跑一次（低負載）
+setInterval(autoRun,6000);
+
+// 🔍 搜尋
+function searchKeyword(){
+
+  const input=document.getElementById("keywordInput").value;
+  if(!input) return;
+
+  showResult("🔍 "+input);
+}
+
+// Enter
+document.getElementById("keywordInput")
+  .addEventListener("keypress",function(e){
+    if(e.key==="Enter") searchKeyword();
+});
+
+// 啟動
+init();
+
+</script>
+
+</body>
+</html>
