@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe 成品版</title>
+<title>XiangKe 產品版</title>
 
 <style>
 body {
@@ -25,8 +25,8 @@ header {
 
 #map {
   height:400px;
-  background:#f3f3f3;
   position:relative;
+  background:url('https://upload.wikimedia.org/wikipedia/commons/7/79/Taiwan_location_map.svg') center/contain no-repeat;
 }
 
 .dot {
@@ -72,7 +72,7 @@ main {
 <body>
 
 <header>
-  <b>🍽️ 饗客智擎（完成版）</b>
+  <b>🍽️ 饗客智擎（產品版）</b>
 </header>
 
 <section class="hero">
@@ -105,21 +105,34 @@ const foods=["雞排","飲料","火鍋","甜點"];
 
 let rankingData={};
 
-// 🔥 顯示結果
+// 🔥 主結果（升級版）
 function showResult(title){
 
   const score = Math.floor(Math.random()*40)+60;
 
+  let level="🟡 普通";
+  let color="#999";
+
+  if(score > 85){
+    level="🔥 爆紅";
+    color="green";
+  }else if(score < 70){
+    level="⚠️ 風險";
+    color="red";
+  }
+
   document.getElementById("mainResult").innerHTML=`
     <b>${title}</b><br>
-    <div style="font-size:30px;color:#F59E0B">${score}分</div>
-    市場熱度上升
+    <div style="font-size:32px;color:${color}">
+      ${score}分
+    </div>
+    ${level}
   `;
 
   updateRanking(title,score);
 }
 
-// 📊 排行榜
+// 📊 排行榜升級
 function updateRanking(name,score){
 
   rankingData[name]=score;
@@ -131,13 +144,20 @@ function updateRanking(name,score){
   let html="<b>🔥 熱門排行榜</b><br>";
 
   sorted.forEach((item,i)=>{
-    html+=`${i+1}. ${item[0]} (${item[1]}分)<br>`;
+
+    let medal="";
+
+    if(i===0) medal="🥇";
+    else if(i===1) medal="🥈";
+    else if(i===2) medal="🥉";
+
+    html+=`${medal} ${item[0]} (${item[1]}分)<br>`;
   });
 
   document.getElementById("ranking").innerHTML=html;
 }
 
-// 🔥 動態點（雷達感）
+// 🔥 動態點
 function spawn(){
 
   const map=document.getElementById("map");
@@ -162,7 +182,6 @@ function spawn(){
   setTimeout(()=>dot.remove(),3000);
 }
 
-// ❗ 控制頻率（穩定）
 setInterval(spawn,2000);
 
 // 🔍 搜尋
