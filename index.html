@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe 穩定強化版</title>
+<title>XiangKe 重生版</title>
 
 <style>
 body { margin:0; font-family:sans-serif; background:#FFF8F1; }
@@ -38,19 +38,6 @@ header {
   100% {transform:translate(-50%,-50%) scale(1);}
 }
 
-.explode {
-  position:absolute;
-  width:20px;
-  height:20px;
-  border-radius:50%;
-  background:orange;
-  animation:boom 0.4s forwards;
-}
-
-@keyframes boom {
-  to {transform:scale(3); opacity:0;}
-}
-
 main {
   display:grid;
   grid-template-columns:1fr 320px;
@@ -63,6 +50,7 @@ main {
   padding:15px;
   border-radius:10px;
   margin-bottom:10px;
+  transition:0.3s;
 }
 </style>
 </head>
@@ -70,7 +58,7 @@ main {
 <body>
 
 <header>
-  <b>🍽️ 饗客智擎（穩定強化版）</b>
+  <b>🍽️ 饗客智擎（穩定重生版）</b>
 </header>
 
 <section class="hero">
@@ -85,7 +73,7 @@ main {
 </div>
 
 <div class="panel">
-  <div id="mainResult" class="card">系統運作中...</div>
+  <div id="mainResult" class="card">系統穩定運作中 ✅</div>
   <div id="ranking" class="card">🔥 排行榜</div>
 </div>
 
@@ -102,9 +90,49 @@ const cities=[
 const foods=["雞排","飲料","火鍋","甜點"];
 
 let rankingData={};
-let activeDots=[]; // 🔥 控制數量
+let dots=[];
+let timer=null;
 
-// 🔥 主結果
+// 🔥 啟動系統（只會跑一次）
+function startSystem(){
+
+  if(timer) return; // ❗ 防止重複啟動
+
+  timer = setInterval(()=>{
+    spawn();
+  },3000);
+
+}
+
+function spawn(){
+
+  const map=document.getElementById("map");
+
+  // ❗ 控制最多5個點
+  if(dots.length>=5){
+    const old=dots.shift();
+    old.remove();
+  }
+
+  const city=cities[Math.floor(Math.random()*cities.length)];
+  const food=foods[Math.floor(Math.random()*foods.length)];
+
+  const dot=document.createElement("div");
+  dot.className="dot";
+
+  dot.style.left=city.x+"%";
+  dot.style.top=city.y+"%";
+  dot.style.background=Math.random()>0.5?"green":"red";
+
+  dot.onclick=()=>{
+    showResult(city.name+"｜"+food);
+  };
+
+  map.appendChild(dot);
+  dots.push(dot);
+}
+
+// 🔥 顯示結果
 function showResult(title){
 
   const score = Math.floor(Math.random()*40)+60;
@@ -139,53 +167,6 @@ function updateRanking(name,score){
   document.getElementById("ranking").innerHTML=html;
 }
 
-// 💥 爆炸（降頻）
-function explode(x,y){
-
-  const boom=document.createElement("div");
-  boom.className="explode";
-
-  boom.style.left=x+"%";
-  boom.style.top=y+"%";
-
-  document.getElementById("map").appendChild(boom);
-
-  setTimeout(()=>boom.remove(),400);
-}
-
-// 🔥 產生點（穩定版）
-function spawn(){
-
-  const map=document.getElementById("map");
-
-  // ❗ 限制最多 6 個點（關鍵）
-  if(activeDots.length > 6){
-    const old = activeDots.shift();
-    old.remove();
-  }
-
-  const city=cities[Math.floor(Math.random()*cities.length)];
-  const food=foods[Math.floor(Math.random()*foods.length)];
-
-  const dot=document.createElement("div");
-  dot.className="dot";
-
-  dot.style.left=city.x+"%";
-  dot.style.top=city.y+"%";
-  dot.style.background=Math.random()>0.5?"green":"red";
-
-  dot.onclick=()=>{
-    explode(city.x,city.y);
-    showResult(city.name+"｜"+food);
-  };
-
-  map.appendChild(dot);
-  activeDots.push(dot);
-}
-
-// ❗ 降頻（不卡）
-setInterval(spawn,3000);
-
 // 🔍 搜尋
 function searchKeyword(){
 
@@ -200,6 +181,9 @@ document.getElementById("keywordInput")
   .addEventListener("keypress",function(e){
     if(e.key==="Enter") searchKeyword();
 });
+
+// 啟動
+startSystem();
 
 </script>
 
