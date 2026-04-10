@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>饗客智擎 AI 雷達 - 熱區系統版</title>
+<title>饗客智擎 AI 雷達 - 專業渲染版</title>
 <style>
   body { background-color: #FFF8E7; margin: 0; font-family: sans-serif; color: #333; overflow-x: hidden; }
   header { padding: 15px; background: #222; color: #F2B705; text-align: center; border-bottom: 2px solid #F2B705; font-size: 1.2em; letter-spacing: 2px; }
@@ -59,7 +59,7 @@
 </head>
 <body>
 
-<header><b>🍽️ 饗客智擎（AI市場雷達 - 第二階段：熱區系統升級）</b></header>
+<header><b>🍽️ 饗客智擎（AI市場雷達 - 專業級渲染管線）</b></header>
 
 <div class="hybrid-layout">
   <div class="radar-section" id="radar-container">
@@ -73,7 +73,7 @@
         <button onclick="triggerScan(null, true)">啟動掃描</button>
       </div>
       <h3 style="margin-top:0;">📡 實時攔截訊號</h3>
-      <div id="intercept-content" style="color:#666;">雷達系統初始化中...</div>
+      <div id="intercept-content" style="color:#666;">系統就緒，等待掃描...</div>
     </div>
     
     <div class="card">
@@ -85,12 +85,12 @@
 
 <script>
 // ==========================================
-// 1. 統一 State 管理 (新增 Heatmap 核心資料)
+// 1. 統一 State 管理
 // ==========================================
 const radarState = {
   angle: 0,
   pings: [],
-  heatmap: [], // 🔥 任務一：建立記憶系統 [ {x, y, intensity} ]
+  heatmap: [], // 熱度點格式: { x, y, intensity }
   rankings: {},
   lastHitZone: null,
   cities: [
@@ -103,9 +103,6 @@ const radarState = {
   searchHistory: []
 };
 
-// ==========================================
-// 2. 動畫引擎 (Canvas)
-// ==========================================
 const canvas = document.getElementById('radarCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -117,6 +114,95 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 setTimeout(resizeCanvas, 100);
 
+// ==========================================
+// 2. 核心渲染管線 (Render Pipeline)
+// ==========================================
+
+// 熱度衰減：每 2 秒執行一次
+setInterval(() => {
+  radarState.heatmap.forEach(h => h.intensity -= 0.1);
+  radarState.heatmap = radarState.heatmap.filter(h => h.intensity > 0);
+}, 2000);
+
+function drawRadar() {
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const centerX = cw / 2;
+  const centerY = ch / 2;
+  const radius = Math.min(cw, ch) * 0.85;
+
+  // 🔥 關鍵修復：每幀徹底清空，由管線重新繪製所有層級
+  ctx.clearRect(0, 0, cw, ch);
+
+  // 第一層：繪製 Heatmap 熱區 (底層)
+  radarState.heatmap.forEach(p => {
+    const x = p.x * cw;
+    const y = p.y * ch;
+    const size = 20 + (p.intensity * 25);
+    const alpha = Math.min(p.intensity * 0.4, 0.7);
+    
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, size);
+    grad.addColorStop(0, `rgba(242, 183, 5, ${alpha})`);
+    grad.addColorStop(1, 'rgba(242, 183, 5, 0)');
+    
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  });
+
+  // 第二層：繪製背景網格 (中層)
+  ctx.strokeStyle = 'rgba(242, 183, 5, 0.15)';
+  ctx.lineWidth = 1;
+  for(let i = 1; i <= 4; i++) {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * (i/4), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 第三層：繪製掃描掃掠線 (Sweep)
+  radarState.angle += 0.025;
+  detectHitByAngle(); 
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(radarState.angle);
+  
+  // 建立掃描扇形漸層
+  const sweepGrad = ctx.createLinearGradient(0, 0, radius, 0);
+  sweepGrad.addColorStop(0, 'rgba(242, 183, 5, 0.6)');
+  sweepGrad.addColorStop(1, 'rgba(242, 183, 5, 0)');
+  
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, radius, 0, -0.5); // 0.5 弧度的扇形寬度
+  ctx.lineTo(0, 0);
+  ctx.fillStyle = sweepGrad;
+  ctx.fill();
+  ctx.restore();
+
+  // 第四層：繪製 Pings 波紋 (最上層)
+  for (let i = radarState.pings.length - 1; i >= 0; i--) {
+    const p = radarState.pings[i];
+    p.radius += 2.0;
+    p.alpha -= 0.025;
+    
+    if (p.alpha <= 0) {
+      radarState.pings.splice(i, 1);
+      continue;
+    }
+    
+    ctx.beginPath();
+    ctx.arc(p.x * cw, p.y * ch, p.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(242, 183, 5, ${p.alpha})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  requestAnimationFrame(drawRadar);
+}
+
+// 角度偵測命中
 function detectHitByAngle() {
   const currentAngle = radarState.angle % (Math.PI * 2);
   const zones = [
@@ -131,194 +217,61 @@ function detectHitByAngle() {
     radarState.lastHitZone = zone.name;
     const city = radarState.cities.find(c => c.name.includes(zone.name));
     if (city) {
-      const food = radarState.keywords[Math.floor(Math.random() * radarState.keywords.length)];
-      triggerScan(city.name + "｜" + food, false, city);
+      triggerScan(null, false, city);
     }
   } else if (!zone) {
     radarState.lastHitZone = null;
   }
 }
 
-// 🔥 任務四：熱度衰減系統 (每 2 秒執行一次)
-setInterval(() => {
-  for (let i = radarState.heatmap.length - 1; i >= 0; i--) {
-    radarState.heatmap[i].intensity -= 0.1;
-    if (radarState.heatmap[i].intensity <= 0) {
-      radarState.heatmap.splice(i, 1);
-    }
-  }
-}, 2000);
-
-function drawRadar() {
-  const cw = canvas.width;
-  const ch = canvas.height;
-  const centerX = cw / 2;
-  const centerY = ch / 2;
-  const radius = Math.min(cw, ch) * 0.85;
-
-  ctx.fillStyle = 'rgba(26, 26, 26, 0.2)'; 
-  ctx.fillRect(0, 0, cw, ch);
-
-  // 🔥 任務五：Canvas 顯示熱區 (渲染背景)
-  radarState.heatmap.forEach(point => {
-    const heatX = point.x * cw;
-    const heatY = point.y * ch;
-    const size = 30 + (point.intensity * 10); // 隨熱度變大
-    const alpha = Math.min(point.intensity * 0.3, 0.6); // 隨熱度變亮
-    
-    const grad = ctx.createRadialGradient(heatX, heatY, 0, heatX, heatY, size);
-    grad.addColorStop(0, `rgba(242, 183, 5, ${alpha})`);
-    grad.addColorStop(1, 'rgba(242, 183, 5, 0)');
-    
-    ctx.beginPath();
-    ctx.arc(heatX, heatY, size, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.fill();
-  });
-
-  // 背景網格
-  ctx.strokeStyle = 'rgba(242, 183, 5, 0.05)';
-  ctx.lineWidth = 1;
-  for(let i = 1; i <= 4; i++) {
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius * (i/4), 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  radarState.angle += 0.025;
-  detectHitByAngle();
-
-  // 掃描線
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  ctx.rotate(radarState.angle);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, radius, 0, -0.4);
-  ctx.lineTo(0, 0);
-  const gradient = ctx.createLinearGradient(0, 0, radius, 0);
-  gradient.addColorStop(0, 'rgba(242, 183, 5, 0.5)');
-  gradient.addColorStop(1, 'rgba(242, 183, 5, 0)');
-  ctx.fillStyle = gradient;
-  ctx.fill();
-  ctx.restore();
-
-  // 波紋動畫
-  for (let i = radarState.pings.length - 1; i >= 0; i--) {
-    const p = radarState.pings[i];
-    p.radius += 1.8;
-    p.alpha -= 0.025;
-    if (p.alpha <= 0) {
-      radarState.pings.splice(i, 1);
-      continue;
-    }
-    ctx.beginPath();
-    ctx.arc(p.x * cw, p.y * ch, p.radius, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(242, 183, 5, ${p.alpha})`;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  }
-  requestAnimationFrame(drawRadar);
-}
-
 // ==========================================
-// 3. UI 渲染引擎 (DOM)
+// 3. UI 與 資料橋樑
 // ==========================================
-function updateDOM(topic, score, source = "雷達掃描", cityName = "全台監控") {
-  let trendColor = "#F59E0B";
-  let statusIcon = "📊";
-  let intelPrefix = "";
-  let analysis = "";
+function updateDOM(topic, score, source, cityName) {
+  let trendColor = score >= 92 ? "#27ae60" : (score < 75 ? "#e74c3c" : "#F59E0B");
+  let analysis = score >= 92 ? "🔥 需求爆發！立即佈署應對。" : "📊 市場監控中。";
 
-  if (score >= 92) {
-    trendColor = "#27ae60";
-    statusIcon = "🔥";
-    intelPrefix = "【緊急情報】";
-    const scenarios = [
-      `聲量瞬間暴漲，${cityName}區出現排隊人潮，建議立即啟動「炸 3 分鐘定律」應對。`,
-      `關鍵字在 ${source} 觸覺率破萬，核心優勢「黃金三角切法」成為討論熱點。`,
-      `發現潛在爆紅趨勢，死神辣椒挑戰引起 ${source} 網紅高度關注。`
-    ];
-    analysis = scenarios[Math.floor(Math.random() * scenarios.length)];
-  } else if (score < 75) {
-    trendColor = "#e74c3c";
-    statusIcon = "📉";
-    intelPrefix = "【監控預警】";
-    analysis = `熱度偵測低迷，建議增加在 ${source} 的曝光頻率，並強調「又臭又香」之獨家特色。`;
-  } else {
-    trendColor = "#F59E0B";
-    statusIcon = "⚖️";
-    intelPrefix = "【常態監控】";
-    analysis = `市場表現穩定。${cityName}區維持基本聲量，符合「科學化烹飪」預期收益。`;
-  }
-
-  const interceptElem = document.getElementById('intercept-content');
-  if (interceptElem) {
-    interceptElem.innerHTML = `
-      <div style="font-size:12px; color:#888; margin-bottom:5px;">📡 來源：${source} ｜ 區域：${cityName}</div>
-      <b style="font-size:1.15em; color:#222;">${intelPrefix} ${topic}</b>
-      <div style="font-size:42px; color:${trendColor}; font-weight:bold; margin: 8px 0;">
-        ${score} <span style="font-size:24px;">${statusIcon}</span>
-      </div>
-      <div style="color:${trendColor}; font-weight:bold; font-size:14px; border-left: 3px solid ${trendColor}; padding-left: 10px; line-height:1.5;">
-        AI 決策評估：<br><span style="font-weight:normal; color:#444;">${analysis}</span>
-      </div>
-    `;
-  }
+  document.getElementById('intercept-content').innerHTML = `
+    <div style="font-size:12px; color:#888; margin-bottom:5px;">📡 ${source} ｜ ${cityName}</div>
+    <b style="font-size:1.1em;">${topic}</b>
+    <div style="font-size:36px; color:${trendColor}; font-weight:bold; margin: 10px 0;">${score}</div>
+    <div style="color:${trendColor}; font-weight:bold; font-size:13px;">AI 決策：${analysis}</div>
+  `;
 
   radarState.rankings[topic] = score;
   const sorted = Object.entries(radarState.rankings).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  let html = "<b>🔥 戰略機會熱度榜</b><br><br>";
+  let html = "<b>🔥 熱度排行榜</b><br><br>";
   sorted.forEach((item, i) => {
-    html += `<div class="ranking-row"><span>${["🥇", "🥈", "🥉"][i] || "▪️"} ${item[0]}</span> <b>${item[1]}</b></div>`;
+    html += `<div class="ranking-row"><span>${["🥇","🥈","🥉"][i]||"▪️"} ${item[0]}</span> <b>${item[1]}</b></div>`;
   });
-
-  if (radarState.searchHistory.length > 0) {
-    html += `<div style="margin-top:15px; font-size:12px; color:#999; border-top:1px dashed #ddd; padding-top:10px;">
-      近期攔截：${radarState.searchHistory.join("、")}
-    </div>`;
-  }
   
   const rankingElem = document.getElementById('ranking-content');
   if (rankingElem) rankingElem.innerHTML = html;
 }
 
-// ==========================================
-// 4. 資料橋樑 (Trigger)
-// ==========================================
 window.triggerScan = function(manualTopic = null, isManualSearch = false, targetCity = null) {
   const inputElem = document.getElementById('keywordInput');
   const inputValue = inputElem ? inputElem.value : "";
   
-  const topic = manualTopic || inputValue || radarState.keywords[Math.floor(Math.random() * radarState.keywords.length)];
+  const city = targetCity || radarState.cities[Math.floor(Math.random() * radarState.cities.length)];
+  const topic = manualTopic || inputValue || city.name + "｜" + radarState.keywords[Math.floor(Math.random() * radarState.keywords.length)];
   const score = Math.floor(Math.random() * 40) + 60;
   const source = isManualSearch ? "手動偵測" : radarState.sources[Math.floor(Math.random() * radarState.sources.length)];
-  const city = targetCity || radarState.cities[Math.floor(Math.random() * radarState.cities.length)];
 
-  if (isManualSearch && inputValue) {
-    if (!radarState.searchHistory.includes(inputValue)) {
-      radarState.searchHistory.unshift(inputValue);
-      if (radarState.searchHistory.length > 3) radarState.searchHistory.pop();
-    }
-    inputElem.value = ""; 
-  }
-
-  // 波動動畫
+  // 1. 動畫指令
   radarState.pings.push({ x: city.x, y: city.y, radius: 0, alpha: 1 });
 
-  // 🔥 任務二與三：建立與累積熱度
-  // 檢查是否已有接近該城市的熱點 (距離 0.05 內)
-  const existingPoint = radarState.heatmap.find(p => 
-    Math.abs(p.x - city.x) < 0.05 && Math.abs(p.y - city.y) < 0.05
-  );
-
-  if (existingPoint) {
-    existingPoint.intensity += 1; // 任務三：熱度累積
+  // 2. 熱度記憶指令
+  const existing = radarState.heatmap.find(p => Math.abs(p.x - city.x) < 0.05);
+  if (existing) {
+    existing.intensity = Math.min(existing.intensity + 1.2, 5.0); // 設定上限避免爆亮
   } else {
-    radarState.heatmap.push({ x: city.x, y: city.y, intensity: 1 }); // 任務二：新增熱點
+    radarState.heatmap.push({ x: city.x, y: city.y, intensity: 1 });
   }
 
+  // 3. UI 渲染
   updateDOM(topic, score, source, city.name);
+  if(isManualSearch && inputElem) inputElem.value = "";
 }
 
 document.getElementById('keywordInput')?.addEventListener('keypress', (e) => {
