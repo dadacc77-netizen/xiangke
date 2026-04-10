@@ -1,5 +1,3 @@
-<script>
-
 window.onload = function(){
 
   const cities=[
@@ -9,85 +7,82 @@ window.onload = function(){
   ];
 
   const foods=["雞排","飲料","火鍋","甜點"];
-
   let rankingData={};
-
   const map=document.getElementById("map");
 
-  // 初始化點
-  cities.forEach(city=>{
-    const dot=document.createElement("div");
-    dot.className="dot";
+  // 錯誤防禦：確認地圖元素確實存在才執行，避免崩潰
+  if(map) {
+    cities.forEach(city=>{
+      const dot=document.createElement("div");
+      dot.className="dot";
+      dot.style.left=city.x+"%";
+      dot.style.top=city.y+"%";
+      dot.style.background="orange";
 
-    dot.style.left=city.x+"%";
-    dot.style.top=city.y+"%";
-    dot.style.background="orange";
+      dot.onclick=()=>{
+        const food=foods[Math.floor(Math.random()*foods.length)];
+        showResult(city.name+"｜"+food);
+      };
 
-    dot.onclick=()=>{
-      const food=foods[Math.floor(Math.random()*foods.length)];
-      showResult(city.name+"｜"+food);
-    };
+      map.appendChild(dot);
+    });
+  }
 
-    map.appendChild(dot);
-  });
-
-  // 顯示結果
+  // 顯示結果與色彩判定
   function showResult(title){
-
     const score = Math.floor(Math.random()*40)+60;
-
     let color = score>85?"green":score<70?"red":"#F59E0B";
-
-    document.getElementById("mainResult").innerHTML=`
-      <b>${title}</b><br>
-      <div style="font-size:30px;color:${color}">
-        ${score}分
-      </div>
-    `;
-
+    
+    const resultContainer = document.getElementById("mainResult");
+    if(resultContainer) {
+       resultContainer.innerHTML=`
+        <b>${title}</b><br>
+        <div style="font-size:30px;color:${color}">
+          ${score}分
+        </div>
+      `;
+    }
     updateRanking(title,score);
   }
 
-  // 排行榜
+  // 排行榜更新
   function updateRanking(name,score){
-
     rankingData[name]=score;
-
     const sorted = Object.entries(rankingData)
       .sort((a,b)=>b[1]-a[1])
       .slice(0,5);
 
     let html="<b>🔥 熱門排行榜</b><br>";
-
     sorted.forEach((item,i)=>{
       html+=`${["🥇","🥈","🥉"][i]||""} ${item[0]} (${item[1]}分)<br>`;
     });
-
-    document.getElementById("ranking").innerHTML=html;
+    
+    const rankingContainer = document.getElementById("ranking");
+    if(rankingContainer) rankingContainer.innerHTML=html;
   }
 
-  // 搜尋
+  // 搜尋功能
   window.searchKeyword=function(){
-
-    const input=document.getElementById("keywordInput").value;
-    if(!input) return;
-
-    showResult("🔍 "+input);
+    const inputElem = document.getElementById("keywordInput");
+    if(!inputElem || !inputElem.value) return;
+    showResult("🔍 "+inputElem.value);
   }
 
-  // Enter
-  document.getElementById("keywordInput")
-    .addEventListener("keypress",function(e){
-      if(e.key==="Enter") searchKeyword();
-    });
+  // 鍵盤監聽：使用可選串連 (?.) 防範 null 崩潰
+  document.getElementById("keywordInput")?.addEventListener("keypress",function(e){
+    if(e.key==="Enter") searchKeyword();
+  });
 
-  // 自動跑（低頻）
-  setInterval(()=>{
+  // 封裝自動隨機邏輯
+  function triggerRandomEvent() {
     const city=cities[Math.floor(Math.random()*cities.length)];
     const food=foods[Math.floor(Math.random()*foods.length)];
     showResult(city.name+"｜"+food);
-  },6000);
+  }
 
+  // 破除 6 秒真空期：載入時立即強制執行一次
+  triggerRandomEvent();
+
+  // 自動跑（低頻）
+  setInterval(triggerRandomEvent, 6000);
 };
-
-</script>
