@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe 重生版</title>
+<title>XiangKe 重建穩定版</title>
 
 <style>
 body { margin:0; font-family:sans-serif; background:#FFF8F1; }
@@ -29,13 +29,6 @@ header {
   position:absolute;
   transform:translate(-50%,-50%);
   cursor:pointer;
-  animation:pulse 1.2s infinite;
-}
-
-@keyframes pulse {
-  0% {transform:translate(-50%,-50%) scale(1);}
-  50% {transform:translate(-50%,-50%) scale(1.5);}
-  100% {transform:translate(-50%,-50%) scale(1);}
 }
 
 main {
@@ -50,7 +43,6 @@ main {
   padding:15px;
   border-radius:10px;
   margin-bottom:10px;
-  transition:0.3s;
 }
 </style>
 </head>
@@ -58,7 +50,7 @@ main {
 <body>
 
 <header>
-  <b>🍽️ 饗客智擎（穩定重生版）</b>
+  <b>🍽️ 饗客智擎（穩定重建版）</b>
 </header>
 
 <section class="hero">
@@ -73,7 +65,7 @@ main {
 </div>
 
 <div class="panel">
-  <div id="mainResult" class="card">系統穩定運作中 ✅</div>
+  <div id="mainResult" class="card">系統已重建 ✅</div>
   <div id="ranking" class="card">🔥 排行榜</div>
 </div>
 
@@ -81,6 +73,7 @@ main {
 
 <script>
 
+// 固定資料
 const cities=[
   {name:"台北",x:50,y:20},
   {name:"台中",x:45,y:45},
@@ -91,45 +84,29 @@ const foods=["雞排","飲料","火鍋","甜點"];
 
 let rankingData={};
 let dots=[];
-let timer=null;
 
-// 🔥 啟動系統（只會跑一次）
-function startSystem(){
-
-  if(timer) return; // ❗ 防止重複啟動
-
-  timer = setInterval(()=>{
-    spawn();
-  },3000);
-
-}
-
-function spawn(){
+// 🔥 初始化（只跑一次）
+function init(){
 
   const map=document.getElementById("map");
 
-  // ❗ 控制最多5個點
-  if(dots.length>=5){
-    const old=dots.shift();
-    old.remove();
-  }
+  cities.forEach(city=>{
+    const dot=document.createElement("div");
+    dot.className="dot";
 
-  const city=cities[Math.floor(Math.random()*cities.length)];
-  const food=foods[Math.floor(Math.random()*foods.length)];
+    dot.style.left=city.x+"%";
+    dot.style.top=city.y+"%";
+    dot.style.background="orange";
 
-  const dot=document.createElement("div");
-  dot.className="dot";
+    dot.onclick=()=>{
+      const food=foods[Math.floor(Math.random()*foods.length)];
+      showResult(city.name+"｜"+food);
+    };
 
-  dot.style.left=city.x+"%";
-  dot.style.top=city.y+"%";
-  dot.style.background=Math.random()>0.5?"green":"red";
+    map.appendChild(dot);
+    dots.push(dot);
+  });
 
-  dot.onclick=()=>{
-    showResult(city.name+"｜"+food);
-  };
-
-  map.appendChild(dot);
-  dots.push(dot);
 }
 
 // 🔥 顯示結果
@@ -137,13 +114,10 @@ function showResult(title){
 
   const score = Math.floor(Math.random()*40)+60;
 
-  let color = score>85?"green":score<70?"red":"#999";
-
   document.getElementById("mainResult").innerHTML=`
     <b>${title}</b><br>
-    <div style="font-size:30px;color:${color}">
-      ${score}分
-    </div>
+    <div style="font-size:30px;color:#F59E0B">${score}分</div>
+    系統穩定運作
   `;
 
   updateRanking(title,score);
@@ -183,7 +157,7 @@ document.getElementById("keywordInput")
 });
 
 // 啟動
-startSystem();
+init();
 
 </script>
 
