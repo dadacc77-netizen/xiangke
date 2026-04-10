@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>饗客智擎 AI 雷達 - 角度命中進化版</title>
+<title>饗客智擎 AI 雷達 - 混合雙擎進化版</title>
 <style>
-  /* 品牌基礎視覺 */
+  /* 品牌基礎視覺設定 */
   body { background-color: #FFF8E7; margin: 0; font-family: sans-serif; color: #333; overflow-x: hidden; }
   header { padding: 15px; background: #222; color: #F2B705; text-align: center; border-bottom: 2px solid #F2B705; font-size: 1.2em; letter-spacing: 2px; }
 
-  /* Hybrid 佈局 */
+  /* Hybrid 佈局設計 */
   .hybrid-layout {
     display: flex;
     flex-wrap: wrap;
@@ -30,9 +30,9 @@
     background-size: contain;
     background-repeat: no-repeat;
     border-radius: 12px;
+    overflow: hidden;
     border: 2px solid #333;
     box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-    overflow: hidden;
   }
   
   canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -64,7 +64,7 @@
 </head>
 <body>
 
-<header><b>🍽️ 饗客智擎（AI雷達 - 角度命中進化版）</b></header>
+<header><b>🍽️ 饗客智擎（AI市場雷達 - 第一階段：數據真實感升級）</b></header>
 
 <div class="hybrid-layout">
   <div class="radar-section" id="radar-container">
@@ -78,7 +78,7 @@
         <button onclick="triggerScan(null, true)">啟動掃描</button>
       </div>
       <h3 style="margin-top:0;">📡 實時攔截訊號</h3>
-      <div id="intercept-content" style="color:#666;">雷達掃描中...</div>
+      <div id="intercept-content" style="color:#666;">雷達系統初始化中...</div>
     </div>
     
     <div class="card">
@@ -96,7 +96,7 @@ const radarState = {
   angle: 0,
   pings: [],
   rankings: {},
-  lastHitZone: null, // 紀錄上一個命中的區域，避免重複噴發
+  lastHitZone: null,
   cities: [
     { id: 'TPE', name: '台北', x: 0.5, y: 0.2 },
     { id: 'TXG', name: '台中', x: 0.45, y: 0.45 },
@@ -121,13 +121,8 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 setTimeout(resizeCanvas, 100);
 
-// 🔥 掃描命中系統（角度與城市關聯）
 function detectHitByAngle() {
-  // 將弧度轉換為 0 到 2PI 的標準區間
   const currentAngle = radarState.angle % (Math.PI * 2);
-
-  // 定義城市對應的掃描扇區角度 (弧度制)
-  // 台北約在 1 點鐘方向，台中 4-5 點鐘，高雄 6-7 點鐘
   const zones = [
     {name:"台北", min: 4.5, max: 5.0}, 
     {name:"台中", min: 5.5, max: 6.0}, 
@@ -136,7 +131,6 @@ function detectHitByAngle() {
 
   const zone = zones.find(z => currentAngle >= z.min && currentAngle < z.max);
 
-  // 如果掃描到新區域且非剛才命中的區域
   if (zone && radarState.lastHitZone !== zone.name) {
     radarState.lastHitZone = zone.name;
     const city = radarState.cities.find(c => c.name.includes(zone.name));
@@ -145,7 +139,7 @@ function detectHitByAngle() {
       triggerScan(city.name + "｜" + food, false, city);
     }
   } else if (!zone) {
-    radarState.lastHitZone = null; // 離開區域後重置
+    radarState.lastHitZone = null;
   }
 }
 
@@ -159,7 +153,6 @@ function drawRadar() {
   ctx.fillStyle = 'rgba(26, 26, 26, 0.2)'; 
   ctx.fillRect(0, 0, cw, ch);
 
-  // 背景網格
   ctx.strokeStyle = 'rgba(242, 183, 5, 0.1)';
   ctx.lineWidth = 1;
   for(let i = 1; i <= 4; i++) {
@@ -168,9 +161,8 @@ function drawRadar() {
     ctx.stroke();
   }
 
-  // 掃描線動畫
   radarState.angle += 0.025;
-  detectHitByAngle(); // 🔥 每一幀都偵測是否命中城市
+  detectHitByAngle();
 
   ctx.save();
   ctx.translate(centerX, centerY);
@@ -186,7 +178,6 @@ function drawRadar() {
   ctx.fill();
   ctx.restore();
 
-  // 波紋動畫
   for (let i = radarState.pings.length - 1; i >= 0; i--) {
     const p = radarState.pings[i];
     p.radius += 1.8;
@@ -205,35 +196,70 @@ function drawRadar() {
 }
 
 // ==========================================
-// 3. UI 渲染與資料橋樑
+// 3. UI 渲染引擎 (DOM) - 第一階段升級核心
 // ==========================================
 function updateDOM(topic, score, source = "雷達掃描", cityName = "全台監控") {
-  let trendColor = score >= 90 ? "#27ae60" : (score < 70 ? "#e74c3c" : "#F59E0B");
-  let analysis = score >= 90 ? "🔥 需求爆發！建議佈署【黃金三角切法】。" : "📊 市場穩定，持續追蹤。";
+  let trendColor = "#F59E0B";
+  let statusIcon = "📊";
+  let intelPrefix = "";
+  let analysis = "";
 
-  document.getElementById('intercept-content').innerHTML = `
-    <div style="font-size:12px; color:#888;">📡 ${source} ｜ ${cityName}</div>
-    <b style="font-size:1.15em;">${topic}</b>
-    <div style="font-size:42px; color:${trendColor}; font-weight:bold; margin: 10px 0;">
-      ${score} <span style="font-size:24px;">${score >= 90 ? '🔥' : '📊'}</span>
-    </div>
-    <div style="color:${trendColor}; font-weight:bold; font-size:14px; border-left: 3px solid ${trendColor}; padding-left: 10px;">
-      AI 決策：${analysis}
-    </div>
-  `;
+  if (score >= 92) {
+    trendColor = "#27ae60";
+    statusIcon = "🔥";
+    intelPrefix = "【緊急情報】";
+    const scenarios = [
+      `聲量瞬間暴漲，${cityName}區出現排隊人潮，建議立即啟動「炸 3 分鐘定律」應對。`,
+      `關鍵字在 ${source} 觸覺率破萬，核心優勢「黃金三角切法」成為討論熱點。`,
+      `發現潛在爆紅趨勢，死神辣椒挑戰引起 ${source} 網紅高度關注。`
+    ];
+    analysis = scenarios[Math.floor(Math.random() * scenarios.length)];
+  } else if (score < 75) {
+    trendColor = "#e74c3c";
+    statusIcon = "📉";
+    intelPrefix = "【監控預警】";
+    analysis = `熱度偵測低迷，建議增加在 ${source} 的曝光頻率，並強調「又臭又香」之獨家特色。`;
+  } else {
+    trendColor = "#F59E0B";
+    statusIcon = "⚖️";
+    intelPrefix = "【常態監控】";
+    analysis = `市場表現穩定。${cityName}區維持基本聲量，符合「科學化烹飪」預期收益。`;
+  }
+
+  const interceptElem = document.getElementById('intercept-content');
+  if (interceptElem) {
+    interceptElem.innerHTML = `
+      <div style="font-size:12px; color:#888; margin-bottom:5px;">📡 來源：${source} ｜ 區域：${cityName}</div>
+      <b style="font-size:1.15em; color:#222;">${intelPrefix} ${topic}</b>
+      <div style="font-size:42px; color:${trendColor}; font-weight:bold; margin: 8px 0;">
+        ${score} <span style="font-size:24px;">${statusIcon}</span>
+      </div>
+      <div style="color:${trendColor}; font-weight:bold; font-size:14px; border-left: 3px solid ${trendColor}; padding-left: 10px; line-height:1.5;">
+        AI 決策評估：<br><span style="font-weight:normal; color:#444;">${analysis}</span>
+      </div>
+    `;
+  }
 
   radarState.rankings[topic] = score;
   const sorted = Object.entries(radarState.rankings).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  let html = "<b>🔥 熱門排行榜</b><br><br>";
+  let html = "<b>🔥 戰略機會熱度榜</b><br><br>";
   sorted.forEach((item, i) => {
-    html += `<div class="ranking-row"><span>${["🥇","🥈","🥉"][i]||"▪️"} ${item[0]}</span> <b>${item[1]}</b></div>`;
+    html += `<div class="ranking-row"><span>${["🥇", "🥈", "🥉"][i] || "▪️"} ${item[0]}</span> <b>${item[1]}</b></div>`;
   });
+
   if (radarState.searchHistory.length > 0) {
-    html += `<div style="margin-top:15px; font-size:12px; color:#999; border-top:1px dashed #ddd; padding-top:10px;">近期熱搜：${radarState.searchHistory.join("、")}</div>`;
+    html += `<div style="margin-top:15px; font-size:12px; color:#999; border-top:1px dashed #ddd; padding-top:10px;">
+      近期攔截：${radarState.searchHistory.join("、")}
+    </div>`;
   }
-  document.getElementById('ranking-content').innerHTML = html;
+  
+  const rankingElem = document.getElementById('ranking-content');
+  if (rankingElem) rankingElem.innerHTML = html;
 }
 
+// ==========================================
+// 4. 資料橋樑 (Trigger)
+// ==========================================
 window.triggerScan = function(manualTopic = null, isManualSearch = false, targetCity = null) {
   const inputElem = document.getElementById('keywordInput');
   const inputValue = inputElem ? inputElem.value : "";
