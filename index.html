@@ -1,132 +1,15 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe Food Radar</title>
+var map;
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+setTimeout(()=>{
+  map = L.map('map').setView([23.7,121],7);
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;800&display=swap');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-:root {
-  --bg:#FFF8F1;
-  --card:#FFFFFF;
-  --primary:#F59E0B;
-  --accent:#10B981;
-  --danger:#EF4444;
-  --text:#3A3A3A;
-}
+  setTimeout(()=>map.invalidateSize(),300);
 
-body {
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:'Noto Sans TC',sans-serif;
-}
+},300);
 
-header {
-  padding:15px 30px;
-  display:flex;
-  justify-content:space-between;
-  background:white;
-  border-bottom:1px solid #eee;
-}
-
-.hero {
-  padding:30px;
-  text-align:center;
-}
-
-.search-box input {
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #ddd;
-}
-
-.search-box button {
-  padding:10px;
-  border:none;
-  border-radius:10px;
-  background:var(--primary);
-  color:white;
-}
-
-main {
-  display:grid;
-  grid-template-columns:1fr 350px;
-}
-
-.panel {
-  padding:20px;
-}
-
-.card {
-  background:var(--card);
-  padding:15px;
-  border-radius:12px;
-  margin-bottom:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.05);
-}
-
-#map {
-  height:500px;
-  border-radius:12px;
-}
-
-@keyframes fadeSlideIn {
-  from {opacity:0; transform:translateY(20px);}
-  to {opacity:1; transform:translateY(0);}
-}
-
-.ai-card {
-  animation:fadeSlideIn .4s ease;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-  <div>🍽️ 饗客智擎</div>
-  <div>● AI市場雷達</div>
-</header>
-
-<section class="hero">
-  <h2>美食市場趨勢分析</h2>
-
-  <div class="search-box">
-    <input id="keywordInput" placeholder="輸入美食關鍵字">
-    <button onclick="searchKeyword()">搜尋</button>
-  </div>
-</section>
-
-<main>
-
-<div class="panel">
-  <div id="map"></div>
-</div>
-
-<div class="panel">
-
-  <div id="mainResult" class="card">
-    請輸入關鍵字或點擊地圖事件
-  </div>
-
-  <div id="ai"></div>
-
-</div>
-
-</main>
-
-<script>
-
-var map = L.map('map').setView([23.7,121],7);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
+// 城市 + 食物
 const cities=[
   {name:"台北",lat:25.03,lng:121.56},
   {name:"台中",lat:24.15,lng:120.67},
@@ -135,6 +18,10 @@ const cities=[
 
 const foods=["雞排","飲料","火鍋","拉麵","甜點"];
 
+// 📊 排行榜資料
+let rankingData={};
+
+// 🤖 AI
 async function getAI(msg){
   try{
     const res=await fetch("https://xiangke-api-production.up.railway.app/chat",{
@@ -145,37 +32,127 @@ async function getAI(msg){
     const data=await res.json();
     return data.reply || "市場上升";
   }catch{
-    return "AI分析：市場趨勢上升";
+    return "市場需求上升";
   }
 }
 
+// 🔥 主結果
 function showResult(title,text){
 
   const main=document.getElementById("mainResult");
 
-  main.innerHTML="🔄 分析中...";
+  main.innerHTML="🚨 發現市場機會中...";
 
   setTimeout(()=>{
+
+    const score = Math.floor(Math.random()*40)+60;
+
+    let level="🟡 可觀察";
+    let action="先測試";
+
+    if(score>85){
+      level="🔥 爆紅機會";
+      action="立刻投入";
+    }else if(score<70){
+      level="⚠️ 風險偏高";
+      action="先觀望";
+    }
+
     main.innerHTML=`
-      <b>${title}</b><br><br>
-      ${text}<br><br>
-      👉 建議：可嘗試投入或增加曝光
+      <div style="font-size:22px;font-weight:bold;">${title}</div>
+      <div style="font-size:40px;color:var(--primary);">${score}分</div>
+      <div>${level}</div>
+      <div style="margin:10px 0;">${text}</div>
+      <div style="background:#fff3cd;padding:10px;border-radius:8px;">
+        👉 建議：${action}
+      </div>
     `;
-  },300);
+
+    updateRanking(title,score);
+
+  },500);
 }
 
+// 📊 排行榜更新
+function updateRanking(name,score){
+
+  rankingData[name]=score;
+
+  const sorted = Object.entries(rankingData)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,5);
+
+  let html="<b>🔥 熱門排行榜</b><br>";
+
+  sorted.forEach((item,i)=>{
+    html+=`${i+1}. ${item[0]} (${item[1]}分)<br>`;
+  });
+
+  document.getElementById("ranking").innerHTML=html;
+}
+
+// 📈 即時數據（像股票）
+function updateTicker(){
+
+  const ticker=document.getElementById("ticker");
+
+  const food=foods[Math.floor(Math.random()*foods.length)];
+  const change=(Math.random()*10-5).toFixed(1);
+
+  ticker.innerHTML=`
+    📈 ${food} ${change>0?"+":""}${change}%
+  `;
+}
+
+setInterval(updateTicker,2000);
+
+// 📰 模擬新聞（可接 Google Alerts）
+function pushNews(){
+
+  const newsBox=document.getElementById("news");
+
+  const food=foods[Math.floor(Math.random()*foods.length)];
+
+  const msg=`📰 ${food} 熱度上升，討論度增加`;
+
+  const div=document.createElement("div");
+  div.innerText=msg;
+
+  newsBox.prepend(div);
+
+  if(newsBox.children.length>5){
+    newsBox.removeChild(newsBox.lastChild);
+  }
+}
+
+setInterval(pushNews,4000);
+
+// 📊 卡片
 function addCard(title,text){
+
   const ai=document.getElementById("ai");
+
+  const source = ["新聞","PTT","IG","Threads"]
+    [Math.floor(Math.random()*4)];
 
   const card=document.createElement("div");
   card.className="ai-card";
 
-  card.innerHTML=`<b>${title}</b><br>${text}`;
+  card.innerHTML=`
+    <b>${title}</b><br>
+    ${text}
+    <div style="font-size:12px;color:gray;">
+      來源：${source}
+    </div>
+  `;
 
   ai.prepend(card);
 }
 
+// 🗺️ 地圖雷達
 function spawnMapEvent(){
+
+  if(!map) return;
 
   const city=cities[Math.floor(Math.random()*cities.length)];
   const food=foods[Math.floor(Math.random()*foods.length)];
@@ -187,10 +164,14 @@ function spawnMapEvent(){
   }).addTo(map);
 
   marker.on("click",()=>{
+
+    alert("🔥 發現機會："+food);
+
     getAI(food+" 在 "+city.name+" 趨勢").then(res=>{
-      showResult("📍 "+city.name+"｜"+food,res);
+      showResult(city.name+"｜"+food,res);
       addCard(food,res);
     });
+
   });
 
   setTimeout(()=>map.removeLayer(marker),5000);
@@ -198,22 +179,19 @@ function spawnMapEvent(){
 
 setInterval(spawnMapEvent,3000);
 
+// 🔍 搜尋
 function searchKeyword(){
   const input=document.getElementById("keywordInput").value;
   if(!input) return;
 
   getAI(input+" 市場趨勢").then(res=>{
-    showResult("🔍 "+input,res);
+    showResult(input,res);
     addCard(input,res);
   });
 }
 
+// Enter
 document.getElementById("keywordInput")
   .addEventListener("keypress",function(e){
     if(e.key==="Enter") searchKeyword();
 });
-
-</script>
-
-</body>
-</html>
