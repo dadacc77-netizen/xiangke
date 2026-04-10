@@ -1,26 +1,32 @@
-vlet map;
-let mapReady = false;
+let map;
 
-// 🔥 安全初始化（等 DOM 完全好）
-window.addEventListener("load", ()=>{
+// ✅ 等整個頁面完全載入
+window.onload = function(){
 
+  // 🔥 確保 map div 有尺寸
+  const mapDiv = document.getElementById("map");
+
+  if(!mapDiv){
+    console.error("map div 不存在");
+    return;
+  }
+
+  // 🔥 強制高度（避免0px問題）
+  mapDiv.style.height = "500px";
+
+  // 🔥 初始化
+  map = L.map('map').setView([23.7,121],7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+  // 🔥 關鍵：延遲 resize
   setTimeout(()=>{
+    map.invalidateSize();
+  },500);
 
-    map = L.map('map').setView([23.7,121],7);
+};
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    // ✅ 關鍵修復
-    setTimeout(()=>{
-      map.invalidateSize();
-      mapReady = true;
-    },500);
-
-  },300);
-
-});
-
-// 資料
+// 📍 資料
 const cities=[
   {name:"台北",lat:25.03,lng:121.56},
   {name:"台中",lat:24.15,lng:120.67},
@@ -29,30 +35,24 @@ const cities=[
 
 const foods=["雞排","飲料","火鍋","拉麵","甜點"];
 
-// 🔥 主結果（穩定版）
-function showResult(title,text){
+// 🔥 主結果（簡化穩定）
+function showResult(title){
 
   const main=document.getElementById("mainResult");
 
-  main.innerHTML="🔄 分析中...";
+  const score = Math.floor(Math.random()*40)+60;
 
-  setTimeout(()=>{
-
-    const score = Math.floor(Math.random()*40)+60;
-
-    main.innerHTML=`
-      <div style="font-size:22px;font-weight:bold;">${title}</div>
-      <div style="font-size:36px;color:var(--primary);">${score}分</div>
-      <div style="margin-top:10px;">${text}</div>
-    `;
-
-  },300);
+  main.innerHTML=`
+    <div style="font-size:22px;font-weight:bold;">${title}</div>
+    <div style="font-size:36px;color:#F59E0B;">${score}分</div>
+    <div style="margin-top:10px;">市場需求變動中</div>
+  `;
 }
 
-// 🔥 地圖事件（降頻版本，避免炸）
+// 🔥 地圖事件（超穩版）
 function spawnMapEvent(){
 
-  if(!mapReady) return;
+  if(!map) return;
 
   const city=cities[Math.floor(Math.random()*cities.length)];
   const food=foods[Math.floor(Math.random()*foods.length)];
@@ -64,23 +64,26 @@ function spawnMapEvent(){
   }).addTo(map);
 
   marker.on("click",()=>{
-    showResult(city.name+"｜"+food,"市場關注上升");
+    showResult(city.name+"｜"+food);
   });
 
+  // 🔥 降低壓力（重點）
   setTimeout(()=>{
-    map.removeLayer(marker);
+    if(map && map.hasLayer(marker)){
+      map.removeLayer(marker);
+    }
   },4000);
 }
 
-// ❗ 降頻（關鍵）
-setInterval(spawnMapEvent,4000);
+// ❗ 超重要：降頻
+setInterval(spawnMapEvent,5000);
 
-// 🔍 搜尋（簡化穩定版）
+// 🔍 搜尋（穩定版）
 function searchKeyword(){
   const input=document.getElementById("keywordInput").value;
   if(!input) return;
 
-  showResult(input,"市場需求上升");
+  showResult("🔍 "+input);
 }
 
 // Enter
