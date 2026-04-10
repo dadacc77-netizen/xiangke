@@ -3,14 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe 最終版</title>
+<title>XiangKe 穩定強化版</title>
 
 <style>
-body {
-  margin:0;
-  font-family:sans-serif;
-  background:#FFF8F1;
-}
+body { margin:0; font-family:sans-serif; background:#FFF8F1; }
 
 header {
   padding:15px;
@@ -18,10 +14,7 @@ header {
   border-bottom:1px solid #eee;
 }
 
-.hero {
-  text-align:center;
-  padding:20px;
-}
+.hero { text-align:center; padding:20px; }
 
 #map {
   height:400px;
@@ -30,18 +23,18 @@ header {
 }
 
 .dot {
-  width:14px;
-  height:14px;
+  width:12px;
+  height:12px;
   border-radius:50%;
   position:absolute;
   transform:translate(-50%,-50%);
   cursor:pointer;
-  animation:pulse 1s infinite;
+  animation:pulse 1.2s infinite;
 }
 
 @keyframes pulse {
   0% {transform:translate(-50%,-50%) scale(1);}
-  50% {transform:translate(-50%,-50%) scale(1.6);}
+  50% {transform:translate(-50%,-50%) scale(1.5);}
   100% {transform:translate(-50%,-50%) scale(1);}
 }
 
@@ -51,12 +44,11 @@ header {
   height:20px;
   border-radius:50%;
   background:orange;
-  animation:boom 0.5s forwards;
+  animation:boom 0.4s forwards;
 }
 
 @keyframes boom {
-  from {transform:scale(1); opacity:1;}
-  to {transform:scale(4); opacity:0;}
+  to {transform:scale(3); opacity:0;}
 }
 
 main {
@@ -64,26 +56,13 @@ main {
   grid-template-columns:1fr 320px;
 }
 
-.panel {
-  padding:20px;
-}
+.panel { padding:20px; }
 
 .card {
   background:white;
   padding:15px;
   border-radius:10px;
   margin-bottom:10px;
-  animation:fadeIn 0.4s ease;
-}
-
-@keyframes fadeIn {
-  from {opacity:0; transform:translateY(10px);}
-  to {opacity:1; transform:translateY(0);}
-}
-
-.news-item {
-  font-size:13px;
-  margin-bottom:5px;
 }
 </style>
 </head>
@@ -91,7 +70,7 @@ main {
 <body>
 
 <header>
-  <b>🍽️ 饗客智擎（最終版）</b>
+  <b>🍽️ 饗客智擎（穩定強化版）</b>
 </header>
 
 <section class="hero">
@@ -106,11 +85,8 @@ main {
 </div>
 
 <div class="panel">
-
   <div id="mainResult" class="card">系統運作中...</div>
   <div id="ranking" class="card">🔥 排行榜</div>
-  <div id="news" class="card">📰 即時動態</div>
-
 </div>
 
 </main>
@@ -124,37 +100,28 @@ const cities=[
 ];
 
 const foods=["雞排","飲料","火鍋","甜點"];
-let rankingData={};
 
-// 🔥 主結果 + AI感
+let rankingData={};
+let activeDots=[]; // 🔥 控制數量
+
+// 🔥 主結果
 function showResult(title){
 
   const score = Math.floor(Math.random()*40)+60;
 
-  let level="🟡 普通";
-  let color="#999";
-
-  if(score > 85){
-    level="🔥 爆紅機會";
-    color="green";
-  }else if(score < 70){
-    level="⚠️ 風險偏高";
-    color="red";
-  }
+  let color = score>85?"green":score<70?"red":"#999";
 
   document.getElementById("mainResult").innerHTML=`
     <b>${title}</b><br>
-    <div style="font-size:32px;color:${color}">
+    <div style="font-size:30px;color:${color}">
       ${score}分
     </div>
-    ${level}<br>
-    👉 建議：${score>80?"立刻進場":"觀察市場"}
   `;
 
   updateRanking(title,score);
 }
 
-// 📊 排行榜（跳動）
+// 📊 排行榜
 function updateRanking(name,score){
 
   rankingData[name]=score;
@@ -166,19 +133,14 @@ function updateRanking(name,score){
   let html="<b>🔥 熱門排行榜</b><br>";
 
   sorted.forEach((item,i)=>{
-
-    let medal=["🥇","🥈","🥉"][i] || "";
-
-    html+=`${medal} ${item[0]} (${item[1]}分)<br>`;
+    html+=`${["🥇","🥈","🥉"][i]||""} ${item[0]} (${item[1]}分)<br>`;
   });
 
   document.getElementById("ranking").innerHTML=html;
 }
 
-// 💥 爆炸動畫
+// 💥 爆炸（降頻）
 function explode(x,y){
-
-  const map=document.getElementById("map");
 
   const boom=document.createElement("div");
   boom.className="explode";
@@ -186,15 +148,21 @@ function explode(x,y){
   boom.style.left=x+"%";
   boom.style.top=y+"%";
 
-  map.appendChild(boom);
+  document.getElementById("map").appendChild(boom);
 
-  setTimeout(()=>boom.remove(),500);
+  setTimeout(()=>boom.remove(),400);
 }
 
-// 🔥 動態點
+// 🔥 產生點（穩定版）
 function spawn(){
 
   const map=document.getElementById("map");
+
+  // ❗ 限制最多 6 個點（關鍵）
+  if(activeDots.length > 6){
+    const old = activeDots.shift();
+    old.remove();
+  }
 
   const city=cities[Math.floor(Math.random()*cities.length)];
   const food=foods[Math.floor(Math.random()*foods.length)];
@@ -209,32 +177,14 @@ function spawn(){
   dot.onclick=()=>{
     explode(city.x,city.y);
     showResult(city.name+"｜"+food);
-    pushNews(food);
   };
 
   map.appendChild(dot);
-
-  setTimeout(()=>dot.remove(),3000);
+  activeDots.push(dot);
 }
 
-setInterval(spawn,2000);
-
-// 📰 假新聞
-function pushNews(food){
-
-  const news=document.getElementById("news");
-
-  const item=document.createElement("div");
-  item.className="news-item";
-
-  item.innerText="📰 "+food+" 討論度暴增";
-
-  news.prepend(item);
-
-  if(news.children.length>6){
-    news.removeChild(news.lastChild);
-  }
-}
+// ❗ 降頻（不卡）
+setInterval(spawn,3000);
 
 // 🔍 搜尋
 function searchKeyword(){
@@ -243,7 +193,6 @@ function searchKeyword(){
   if(!input) return;
 
   showResult("🔍 "+input);
-  pushNews(input);
 }
 
 // Enter
