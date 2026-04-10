@@ -50,6 +50,32 @@ header {
   border-bottom:1px solid #1e293b;
 }
 
+/* 🔥 新產品區 */
+.hero {
+  padding:50px 20px;
+  text-align:center;
+  border-bottom:1px solid #1e293b;
+}
+
+.hero h1 {
+  font-size:36px;
+}
+
+.hero-sub {
+  color:#00F0FF;
+  margin-top:10px;
+  font-size:18px;
+}
+
+.hero-desc {
+  margin-top:15px;
+  color:#94a3b8;
+}
+
+.hero-guide {
+  margin-top:25px;
+}
+
 main {
   display:grid;
   grid-template-columns:260px 1fr 300px;
@@ -112,21 +138,24 @@ main {
   <div>● LIVE</div>
 </header>
 
-<!-- 🧠 產品介紹 -->
-<section style="padding:40px;text-align:center;border-bottom:1px solid #1e293b;">
-  <h1 style="font-size:32px;">🍽️ 饗客智擎</h1>
-  <p style="color:#94a3b8;margin-top:10px;">
-    即時分析市場趨勢，幫你快速做出最佳決策
-  </p>
-  <p style="margin-top:15px;">
-    系統會自動監測熱門關鍵字、流量變化與風險，
-    並透過 AI 提供即時建議
-  </p>
-  <div style="margin-top:25px;color:#00F0FF;">
-    ① 觀察雷達趨勢  
-    ② 查看 AI 分析卡片  
-    ③ 點擊查看詳細建議
+<!-- 🔥 全新產品介紹 -->
+<section class="hero">
+
+  <h1>🍽️ 饗客智擎 AI 市場雷達</h1>
+
+  <div class="hero-sub">
+    即時抓出「現在最值得做的生意機會」
   </div>
+
+  <div class="hero-desc">
+    AI 會自動分析熱門關鍵字、流量趨勢與風險，
+    幫你快速判斷：該不該做？要不要進場？
+  </div>
+
+  <div class="hero-guide">
+    👇 直接看右側 AI 分析，找到機會
+  </div>
+
 </section>
 
 <main>
@@ -145,11 +174,12 @@ main {
 
 <div class="panel">
 
-  <!-- 🔥 總結 -->
+  <!-- 🔥 強化版 SUMMARY -->
   <div class="ai-card" style="border-left:3px solid #00F0FF;">
-    <div style="color:#00F0FF;font-size:12px;">● SUMMARY</div>
+    <div style="color:#00F0FF;font-size:12px;">● 市場決策建議</div>
     <div>
-      目前市場趨勢穩定上升，建議增加曝光與備貨
+      目前市場需求正在上升，建議優先布局熱門品項，
+      可加大曝光或提前備貨，以搶佔先機
     </div>
   </div>
 
