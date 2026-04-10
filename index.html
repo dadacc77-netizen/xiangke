@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe 產品版</title>
+<title>XiangKe 最終版</title>
 
 <style>
 body {
@@ -45,9 +45,23 @@ header {
   100% {transform:translate(-50%,-50%) scale(1);}
 }
 
+.explode {
+  position:absolute;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:orange;
+  animation:boom 0.5s forwards;
+}
+
+@keyframes boom {
+  from {transform:scale(1); opacity:1;}
+  to {transform:scale(4); opacity:0;}
+}
+
 main {
   display:grid;
-  grid-template-columns:1fr 300px;
+  grid-template-columns:1fr 320px;
 }
 
 .panel {
@@ -66,13 +80,18 @@ main {
   from {opacity:0; transform:translateY(10px);}
   to {opacity:1; transform:translateY(0);}
 }
+
+.news-item {
+  font-size:13px;
+  margin-bottom:5px;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-  <b>🍽️ 饗客智擎（產品版）</b>
+  <b>🍽️ 饗客智擎（最終版）</b>
 </header>
 
 <section class="hero">
@@ -87,8 +106,11 @@ main {
 </div>
 
 <div class="panel">
+
   <div id="mainResult" class="card">系統運作中...</div>
   <div id="ranking" class="card">🔥 排行榜</div>
+  <div id="news" class="card">📰 即時動態</div>
+
 </div>
 
 </main>
@@ -102,10 +124,9 @@ const cities=[
 ];
 
 const foods=["雞排","飲料","火鍋","甜點"];
-
 let rankingData={};
 
-// 🔥 主結果（升級版）
+// 🔥 主結果 + AI感
 function showResult(title){
 
   const score = Math.floor(Math.random()*40)+60;
@@ -114,10 +135,10 @@ function showResult(title){
   let color="#999";
 
   if(score > 85){
-    level="🔥 爆紅";
+    level="🔥 爆紅機會";
     color="green";
   }else if(score < 70){
-    level="⚠️ 風險";
+    level="⚠️ 風險偏高";
     color="red";
   }
 
@@ -126,13 +147,14 @@ function showResult(title){
     <div style="font-size:32px;color:${color}">
       ${score}分
     </div>
-    ${level}
+    ${level}<br>
+    👉 建議：${score>80?"立刻進場":"觀察市場"}
   `;
 
   updateRanking(title,score);
 }
 
-// 📊 排行榜升級
+// 📊 排行榜（跳動）
 function updateRanking(name,score){
 
   rankingData[name]=score;
@@ -145,16 +167,28 @@ function updateRanking(name,score){
 
   sorted.forEach((item,i)=>{
 
-    let medal="";
-
-    if(i===0) medal="🥇";
-    else if(i===1) medal="🥈";
-    else if(i===2) medal="🥉";
+    let medal=["🥇","🥈","🥉"][i] || "";
 
     html+=`${medal} ${item[0]} (${item[1]}分)<br>`;
   });
 
   document.getElementById("ranking").innerHTML=html;
+}
+
+// 💥 爆炸動畫
+function explode(x,y){
+
+  const map=document.getElementById("map");
+
+  const boom=document.createElement("div");
+  boom.className="explode";
+
+  boom.style.left=x+"%";
+  boom.style.top=y+"%";
+
+  map.appendChild(boom);
+
+  setTimeout(()=>boom.remove(),500);
 }
 
 // 🔥 動態點
@@ -170,11 +204,12 @@ function spawn(){
 
   dot.style.left=city.x+"%";
   dot.style.top=city.y+"%";
-
   dot.style.background=Math.random()>0.5?"green":"red";
 
   dot.onclick=()=>{
+    explode(city.x,city.y);
     showResult(city.name+"｜"+food);
+    pushNews(food);
   };
 
   map.appendChild(dot);
@@ -184,6 +219,23 @@ function spawn(){
 
 setInterval(spawn,2000);
 
+// 📰 假新聞
+function pushNews(food){
+
+  const news=document.getElementById("news");
+
+  const item=document.createElement("div");
+  item.className="news-item";
+
+  item.innerText="📰 "+food+" 討論度暴增";
+
+  news.prepend(item);
+
+  if(news.children.length>6){
+    news.removeChild(news.lastChild);
+  }
+}
+
 // 🔍 搜尋
 function searchKeyword(){
 
@@ -191,6 +243,7 @@ function searchKeyword(){
   if(!input) return;
 
   showResult("🔍 "+input);
+  pushNews(input);
 }
 
 // Enter
