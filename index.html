@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XiangKe Food Radar</title>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;800&display=swap');
 
@@ -33,49 +36,32 @@ header {
 }
 
 .hero {
-  padding:40px 20px;
+  padding:30px;
   text-align:center;
-}
-
-.hero h1 { font-size:34px; }
-
-.hero-sub {
-  color:var(--primary);
-  margin-top:10px;
-  font-size:18px;
-}
-
-.hero-desc {
-  margin-top:10px;
-  color:#777;
-}
-
-.search-box {
-  margin-top:20px;
 }
 
 .search-box input {
   padding:10px;
   border-radius:10px;
   border:1px solid #ddd;
-  width:200px;
 }
 
 .search-box button {
-  padding:10px 20px;
+  padding:10px;
   border:none;
   border-radius:10px;
   background:var(--primary);
   color:white;
-  cursor:pointer;
 }
 
 main {
   display:grid;
-  grid-template-columns:260px 1fr 300px;
+  grid-template-columns:1fr 350px;
 }
 
-.panel { padding:20px; }
+.panel {
+  padding:20px;
+}
 
 .card {
   background:var(--card);
@@ -85,40 +71,18 @@ main {
   box-shadow:0 4px 10px rgba(0,0,0,0.05);
 }
 
-.radar {
-  width:350px;
-  height:350px;
-  border-radius:50%;
-  border:2px solid var(--primary);
-  position:relative;
-  margin:auto;
+#map {
+  height:500px;
+  border-radius:12px;
 }
 
-.scan {
-  position:absolute;
-  width:100%;
-  height:100%;
-  border-radius:50%;
-  background:conic-gradient(from 0deg,transparent 70%,rgba(245,158,11,.3));
-  animation:spin 4s linear infinite;
-}
-
-@keyframes spin {100%{transform:rotate(360deg)}}
-
-.blip {
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  position:absolute;
-  transform:translate(-50%,-50%);
+@keyframes fadeSlideIn {
+  from {opacity:0; transform:translateY(20px);}
+  to {opacity:1; transform:translateY(0);}
 }
 
 .ai-card {
-  background:var(--card);
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:10px;
-  cursor:pointer;
+  animation:fadeSlideIn .4s ease;
 }
 </style>
 </head>
@@ -127,16 +91,14 @@ main {
 
 <header>
   <div>🍽️ 饗客智擎</div>
-  <div>● 即時分析</div>
+  <div>● AI市場雷達</div>
 </header>
 
 <section class="hero">
-  <h1>美食市場 AI 雷達</h1>
-  <div class="hero-sub">幫你找出現在最夯的餐飲機會</div>
-  <div class="hero-desc">輸入關鍵字，立即分析市場趨勢與商機</div>
+  <h2>美食市場趨勢分析</h2>
 
   <div class="search-box">
-    <input id="keywordInput" placeholder="例如：雞排、飲料">
+    <input id="keywordInput" placeholder="輸入美食關鍵字">
     <button onclick="searchKeyword()">搜尋</button>
   </div>
 </section>
@@ -144,22 +106,13 @@ main {
 <main>
 
 <div class="panel">
-  <div class="card">營收：<span id="rev">0</span></div>
-  <div class="card">流量：<span id="tra">0</span></div>
-  <div class="card">風險：<span id="risk">0%</span></div>
-</div>
-
-<div class="panel">
-  <div class="radar" id="radar">
-    <div class="scan"></div>
-  </div>
+  <div id="map"></div>
 </div>
 
 <div class="panel">
 
-  <div id="mainResult" class="card" style="border-left:4px solid var(--primary);">
-    <b>🔍 分析結果</b><br>
-    請輸入關鍵字開始分析
+  <div id="mainResult" class="card">
+    請輸入關鍵字或點擊地圖事件
   </div>
 
   <div id="ai"></div>
@@ -170,13 +123,17 @@ main {
 
 <script>
 
-let stats={rev:1000000,tra:30000,risk:1.2};
+var map = L.map('map').setView([23.7,121],7);
 
-function updateUI(){
-  rev.innerText=stats.rev.toLocaleString();
-  tra.innerText=stats.tra.toLocaleString();
-  risk.innerText=stats.risk.toFixed(2)+"%";
-}
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+const cities=[
+  {name:"台北",lat:25.03,lng:121.56},
+  {name:"台中",lat:24.15,lng:120.67},
+  {name:"高雄",lat:22.63,lng:120.30}
+];
+
+const foods=["雞排","飲料","火鍋","拉麵","甜點"];
 
 async function getAI(msg){
   try{
@@ -186,87 +143,75 @@ async function getAI(msg){
       body:JSON.stringify({message:msg})
     });
     const data=await res.json();
-    return data.reply || "市場需求上升";
+    return data.reply || "市場上升";
   }catch{
-    return "AI分析：市場需求上升";
+    return "AI分析：市場趨勢上升";
   }
 }
+
+function showResult(title,text){
+
+  const main=document.getElementById("mainResult");
+
+  main.innerHTML="🔄 分析中...";
+
+  setTimeout(()=>{
+    main.innerHTML=`
+      <b>${title}</b><br><br>
+      ${text}<br><br>
+      👉 建議：可嘗試投入或增加曝光
+    `;
+  },300);
+}
+
+function addCard(title,text){
+  const ai=document.getElementById("ai");
+
+  const card=document.createElement("div");
+  card.className="ai-card";
+
+  card.innerHTML=`<b>${title}</b><br>${text}`;
+
+  ai.prepend(card);
+}
+
+function spawnMapEvent(){
+
+  const city=cities[Math.floor(Math.random()*cities.length)];
+  const food=foods[Math.floor(Math.random()*foods.length)];
+
+  const marker=L.circleMarker([city.lat,city.lng],{
+    radius:10,
+    color:"orange",
+    fillOpacity:0.7
+  }).addTo(map);
+
+  marker.on("click",()=>{
+    getAI(food+" 在 "+city.name+" 趨勢").then(res=>{
+      showResult("📍 "+city.name+"｜"+food,res);
+      addCard(food,res);
+    });
+  });
+
+  setTimeout(()=>map.removeLayer(marker),5000);
+}
+
+setInterval(spawnMapEvent,3000);
 
 function searchKeyword(){
   const input=document.getElementById("keywordInput").value;
   if(!input) return;
 
-  const main=document.getElementById("mainResult");
-
-  main.innerHTML="🔄 正在分析市場資料...";
-
   getAI(input+" 市場趨勢").then(res=>{
-
-    main.innerHTML=`
-      <b>🔍 ${input} 分析</b><br><br>
-      ${res}<br><br>
-      <b>👉 建議：</b><br>
-      可以測試上架、增加曝光或觀察競品
-    `;
-
-    const ai=document.getElementById("ai");
-
-    const level = Math.random();
-    let color = "var(--primary)";
-    if(level > 0.7) color = "var(--accent)";
-    if(level < 0.3) color = "var(--danger)";
-
-    const source = ["新聞","PTT","IG","Threads"][Math.floor(Math.random()*4)];
-
-    const card=document.createElement("div");
-    card.className="ai-card";
-    card.style.borderLeft="4px solid "+color;
-
-    card.innerHTML=`
-      <b>🔍 ${input}</b><br>
-      ${res}
-      <div style="font-size:12px;color:gray;margin-top:5px;">
-        來源：${source}
-      </div>
-    `;
-
-    ai.prepend(card);
+    showResult("🔍 "+input,res);
+    addCard(input,res);
   });
 }
 
-// Enter 搜尋
 document.getElementById("keywordInput")
-  .addEventListener("keypress", function(e){
-    if(e.key === "Enter"){
-      searchKeyword();
-    }
+  .addEventListener("keypress",function(e){
+    if(e.key==="Enter") searchKeyword();
 });
-
-function spawn(){
-
-  const radar=document.getElementById("radar");
-
-  const x=Math.random()*300;
-  const y=Math.random()*300;
-
-  const blip=document.createElement("div");
-  blip.className="blip";
-  blip.style.left=x+"px";
-  blip.style.top=y+"px";
-  blip.style.background=Math.random()>0.7?"var(--danger)":"var(--accent)";
-
-  radar.appendChild(blip);
-  setTimeout(()=>blip.remove(),3000);
-
-  stats.rev+=5000;
-  stats.tra+=300;
-  stats.risk=Math.max(0,stats.risk+(Math.random()-0.5));
-
-  updateUI();
-}
-
-setInterval(spawn,3000);
-updateUI();
 
 </script>
 
