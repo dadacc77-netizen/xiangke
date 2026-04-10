@@ -3,10 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe Food Radar</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<title>XiangKe Fake Map</title>
 
 <style>
 body {
@@ -30,18 +28,32 @@ header {
 
 #map {
   height:500px;
-  width:100%;
-  border-radius:10px;
+  background:url('https://upload.wikimedia.org/wikipedia/commons/7/79/Taiwan_location_map.svg') center/contain no-repeat;
+  position:relative;
+}
+
+.dot {
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  position:absolute;
+  transform:translate(-50%,-50%);
+  cursor:pointer;
+  animation:pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {transform:translate(-50%,-50%) scale(1);}
+  50% {transform:translate(-50%,-50%) scale(1.5);}
+  100% {transform:translate(-50%,-50%) scale(1);}
 }
 
 main {
   display:grid;
-  grid-template-columns:1fr 300px;
+  grid-template-columns:1fr 320px;
 }
 
-.panel {
-  padding:20px;
-}
+.panel { padding:20px; }
 
 .card {
   background:white;
@@ -56,7 +68,7 @@ main {
 
 <header>
   <div>🍽️ 饗客智擎</div>
-  <div>● 穩定版</div>
+  <div>● 模擬地圖雷達</div>
 </header>
 
 <section class="hero">
@@ -78,82 +90,60 @@ main {
 
 <script>
 
-let map;
-
-// ✅ DOM完成後初始化
-document.addEventListener("DOMContentLoaded", function(){
-
-  const mapEl = document.getElementById("map");
-
-  map = L.map(mapEl).setView([23.7,121],7);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-  }).addTo(map);
-
-  // 🔥 修灰畫面
-  setTimeout(()=>{
-    map.invalidateSize();
-  },500);
-
-});
-
-// 📍 資料
 const cities=[
-  {name:"台北",lat:25.03,lng:121.56},
-  {name:"台中",lat:24.15,lng:120.67},
-  {name:"高雄",lat:22.63,lng:120.30}
+  {name:"台北",x:50,y:20},
+  {name:"台中",x:45,y:45},
+  {name:"高雄",x:48,y:75}
 ];
 
-const foods=["雞排","飲料","火鍋","拉麵","甜點"];
+const foods=["雞排","飲料","火鍋","甜點"];
 
-// 🔥 地圖事件（穩）
-function spawnMapEvent(){
-
-  if(!map) return;
-
-  const city=cities[Math.floor(Math.random()*cities.length)];
-  const food=foods[Math.floor(Math.random()*foods.length)];
-
-  const marker=L.circleMarker([city.lat,city.lng],{
-    radius:8,
-    color:"orange",
-    fillOpacity:0.7
-  }).addTo(map);
-
-  marker.on("click",()=>{
-
-    const score = Math.floor(Math.random()*40)+60;
-
-    document.getElementById("mainResult").innerHTML=`
-      <b>${city.name}｜${food}</b><br>
-      <div style="font-size:30px;color:#F59E0B">${score}分</div>
-      市場需求上升
-    `;
-  });
-
-  setTimeout(()=>{
-    if(map && map.hasLayer(marker)){
-      map.removeLayer(marker);
-    }
-  },4000);
-}
-
-// ❗ 降頻避免爆
-setInterval(spawnMapEvent,4000);
-
-// 🔍 搜尋
-function searchKeyword(){
-  const input=document.getElementById("keywordInput").value;
-  if(!input) return;
+// 🔥 主結果
+function showResult(text){
 
   const score = Math.floor(Math.random()*40)+60;
 
   document.getElementById("mainResult").innerHTML=`
-    <b>🔍 ${input}</b><br>
+    <b>${text}</b><br>
     <div style="font-size:30px;color:#F59E0B">${score}分</div>
-    市場需求上升
+    市場熱度上升
   `;
+}
+
+// 🔥 生成點
+function spawn(){
+
+  const map=document.getElementById("map");
+
+  const city=cities[Math.floor(Math.random()*cities.length)];
+  const food=foods[Math.floor(Math.random()*foods.length)];
+
+  const dot=document.createElement("div");
+  dot.className="dot";
+
+  dot.style.left=city.x+"%";
+  dot.style.top=city.y+"%";
+
+  dot.style.background=Math.random()>0.5?"green":"red";
+
+  dot.onclick=()=>{
+    showResult(city.name+"｜"+food);
+  };
+
+  map.appendChild(dot);
+
+  setTimeout(()=>dot.remove(),3000);
+}
+
+setInterval(spawn,2000);
+
+// 搜尋
+function searchKeyword(){
+
+  const input=document.getElementById("keywordInput").value;
+  if(!input) return;
+
+  showResult("🔍 "+input);
 }
 
 // Enter
