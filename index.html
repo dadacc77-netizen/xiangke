@@ -1,30 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XiangKe Food Radar</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+body {
+  margin:0;
+  font-family:sans-serif;
+  background:#FFF8F1;
+}
+
+header {
+  padding:15px;
+  background:white;
+  border-bottom:1px solid #eee;
+  display:flex;
+  justify-content:space-between;
+}
+
+.hero {
+  text-align:center;
+  padding:20px;
+}
+
+#map {
+  height:500px;
+  width:100%;
+  border-radius:10px;
+}
+
+main {
+  display:grid;
+  grid-template-columns:1fr 300px;
+}
+
+.panel {
+  padding:20px;
+}
+
+.card {
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>🍽️ 饗客智擎</div>
+  <div>● 穩定版</div>
+</header>
+
+<section class="hero">
+  <input id="keywordInput" placeholder="輸入關鍵字">
+  <button onclick="searchKeyword()">搜尋</button>
+</section>
+
+<main>
+
+<div class="panel">
+  <div id="map"></div>
+</div>
+
+<div class="panel">
+  <div id="mainResult" class="card">等待分析...</div>
+</div>
+
+</main>
+
+<script>
+
 let map;
 
-// ✅ 等整個頁面完全載入
-window.onload = function(){
+// ✅ DOM完成後初始化
+document.addEventListener("DOMContentLoaded", function(){
 
-  // 🔥 確保 map div 有尺寸
-  const mapDiv = document.getElementById("map");
+  const mapEl = document.getElementById("map");
 
-  if(!mapDiv){
-    console.error("map div 不存在");
-    return;
-  }
+  map = L.map(mapEl).setView([23.7,121],7);
 
-  // 🔥 強制高度（避免0px問題）
-  mapDiv.style.height = "500px";
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map);
 
-  // 🔥 初始化
-  map = L.map('map').setView([23.7,121],7);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-  // 🔥 關鍵：延遲 resize
+  // 🔥 修灰畫面
   setTimeout(()=>{
     map.invalidateSize();
   },500);
 
-};
+});
 
 // 📍 資料
 const cities=[
@@ -35,21 +107,7 @@ const cities=[
 
 const foods=["雞排","飲料","火鍋","拉麵","甜點"];
 
-// 🔥 主結果（簡化穩定）
-function showResult(title){
-
-  const main=document.getElementById("mainResult");
-
-  const score = Math.floor(Math.random()*40)+60;
-
-  main.innerHTML=`
-    <div style="font-size:22px;font-weight:bold;">${title}</div>
-    <div style="font-size:36px;color:#F59E0B;">${score}分</div>
-    <div style="margin-top:10px;">市場需求變動中</div>
-  `;
-}
-
-// 🔥 地圖事件（超穩版）
+// 🔥 地圖事件（穩）
 function spawnMapEvent(){
 
   if(!map) return;
@@ -64,10 +122,16 @@ function spawnMapEvent(){
   }).addTo(map);
 
   marker.on("click",()=>{
-    showResult(city.name+"｜"+food);
+
+    const score = Math.floor(Math.random()*40)+60;
+
+    document.getElementById("mainResult").innerHTML=`
+      <b>${city.name}｜${food}</b><br>
+      <div style="font-size:30px;color:#F59E0B">${score}分</div>
+      市場需求上升
+    `;
   });
 
-  // 🔥 降低壓力（重點）
   setTimeout(()=>{
     if(map && map.hasLayer(marker)){
       map.removeLayer(marker);
@@ -75,15 +139,21 @@ function spawnMapEvent(){
   },4000);
 }
 
-// ❗ 超重要：降頻
-setInterval(spawnMapEvent,5000);
+// ❗ 降頻避免爆
+setInterval(spawnMapEvent,4000);
 
-// 🔍 搜尋（穩定版）
+// 🔍 搜尋
 function searchKeyword(){
   const input=document.getElementById("keywordInput").value;
   if(!input) return;
 
-  showResult("🔍 "+input);
+  const score = Math.floor(Math.random()*40)+60;
+
+  document.getElementById("mainResult").innerHTML=`
+    <b>🔍 ${input}</b><br>
+    <div style="font-size:30px;color:#F59E0B">${score}分</div>
+    市場需求上升
+  `;
 }
 
 // Enter
@@ -91,3 +161,8 @@ document.getElementById("keywordInput")
   .addEventListener("keypress",function(e){
     if(e.key==="Enter") searchKeyword();
 });
+
+</script>
+
+</body>
+</html>
