@@ -1,87 +1,277 @@
-// 🔥 升級 radarState
-radarState.sources = ["Threads","PTT","Dcard","IG"];
-radarState.searchHistory = [];
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>饗客智擎 AI 雷達 - 混合雙擎版</title>
+<style>
+  /* 品牌基礎視覺設定 */
+  body { background-color: #FFF8E7; margin: 0; font-family: sans-serif; color: #333; overflow-x: hidden; }
+  header { padding: 15px; background: #222; color: #F2B705; text-align: center; border-bottom: 2px solid #F2B705; font-size: 1.2em; letter-spacing: 2px; }
 
-// 🔥 安全 triggerScan（相容舊版）
-window.triggerScan = function(manualTopic=null){
-
-  const input = document.getElementById('keywordInput').value;
-  const topic = manualTopic || input || radarState.keywords[Math.floor(Math.random()*radarState.keywords.length)];
-  const score = Math.floor(Math.random()*40)+60;
-
-  const source = radarState.sources[Math.floor(Math.random()*radarState.sources.length)];
-  const city = radarState.cities[Math.floor(Math.random()*radarState.cities.length)];
-
-  // 🔥 搜尋紀錄
-  if(input){
-    if(!radarState.searchHistory.includes(input)){
-      radarState.searchHistory.unshift(input);
-      if(radarState.searchHistory.length > 3){
-        radarState.searchHistory.pop();
-      }
-    }
+  /* Hybrid 佈局設計 */
+  .hybrid-layout {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 1400px;
+    margin: 20px auto;
+    gap: 20px;
+    padding: 0 20px;
   }
 
+  /* 左側：Canvas 雷達動畫區 */
+  .radar-section {
+    flex: 1 1 600px; 
+    position: relative;
+    height: 500px;
+    background-color: #1a1a1a;
+    background-image: url('https://upload.wikimedia.org/wikipedia/commons/7/79/Taiwan_location_map.svg');
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #333;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+  }
+  
+  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  /* 右側：DOM 資訊顯示區 */
+  .info-section {
+    flex: 1 1 350px; 
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    border-top: 5px solid #F2B705;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+  }
+
+  /* 操控區塊 */
+  .controls { margin-bottom: 20px; display: flex; gap: 8px; }
+  .controls input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; outline: none; }
+  .controls input:focus { border-color: #F2B705; }
+  .controls button { padding: 10px 20px; background-color: #F2B705; color: #222; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+  .controls button:hover { background-color: #d19b00; transform: translateY(-2px); }
+  
+  .ranking-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #eee; font-size: 1.1em; }
+  #intercept-content { line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header><b>🍽️ 饗客智擎（AI市場雷達 - 混合雙擎進化版）</b></header>
+
+<div class="hybrid-layout">
+  <div class="radar-section" id="radar-container">
+    <canvas id="radarCanvas"></canvas>
+  </div>
+
+  <div class="info-section">
+    <div class="card">
+      <div class="controls">
+        <input type="text" id="keywordInput" placeholder="輸入關鍵字進行偵測...">
+        <button onclick="triggerScan()">啟動掃描</button>
+      </div>
+      <h3 style="margin-top:0;">📡 實時攔截訊號</h3>
+      <div id="intercept-content" style="color:#666;">系統初始化中...</div>
+    </div>
+    
+    <div class="card">
+      <h3 style="margin-top:0;">🔥 戰略機會熱度榜</h3>
+      <div id="ranking-content">分析中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 1. 統一 State 管理
+// ==========================================
+const radarState = {
+  angle: 0,
+  pings: [],
+  rankings: {},
+  cities: [
+    { id: 'TPE', name: '台北', x: 0.5, y: 0.2 },
+    { id: 'TXG', name: '台中', x: 0.45, y: 0.45 },
+    { id: 'KHH', name: '高雄 (大本營)', x: 0.45, y: 0.75 }
+  ],
+  keywords: ["尋找高雄宵夜", "黃金三角切法", "獨門死神辣椒秘方", "炸 3 分鐘定律"],
+  sources: ["Threads", "PTT", "Dcard", "IG"],
+  searchHistory: []
+};
+
+// ==========================================
+// 2. 動畫引擎 (Canvas 渲染)
+// ==========================================
+const canvas = document.getElementById('radarCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  if(!canvas.parentElement) return;
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 100);
+
+function drawRadar() {
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const centerX = cw / 2;
+  const centerY = ch / 2;
+  const radius = Math.min(cw, ch) * 0.85;
+
+  // 使用半透明填充製造殘影效果
+  ctx.fillStyle = 'rgba(26, 26, 26, 0.2)'; 
+  ctx.fillRect(0, 0, cw, ch);
+
+  // 繪製背景網格圓
+  ctx.strokeStyle = 'rgba(242, 183, 5, 0.1)';
+  ctx.lineWidth = 1;
+  for(let i = 1; i <= 4; i++) {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * (i/4), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 繪製掃描扇形
+  radarState.angle += 0.025;
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(radarState.angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, radius, 0, -0.4);
+  ctx.lineTo(0, 0);
+  const gradient = ctx.createLinearGradient(0, 0, radius, 0);
+  gradient.addColorStop(0, 'rgba(242, 183, 5, 0.5)');
+  gradient.addColorStop(1, 'rgba(242, 183, 5, 0)');
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.restore();
+
+  // 繪製命中波紋 (Pings)
+  for (let i = radarState.pings.length - 1; i >= 0; i--) {
+    const p = radarState.pings[i];
+    p.radius += 1.8;
+    p.alpha -= 0.025;
+    
+    if (p.alpha <= 0) {
+      radarState.pings.splice(i, 1);
+      continue;
+    }
+    
+    ctx.beginPath();
+    ctx.arc(p.x * cw, p.y * ch, p.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(242, 183, 5, ${p.alpha})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  requestAnimationFrame(drawRadar);
+}
+
+// ==========================================
+// 3. UI 渲染引擎 (DOM)
+// ==========================================
+function updateDOM(topic, score, source = "系統監控", cityName = "全台監控中") {
+  let trendIcon = "📊";
+  let trendColor = "#F59E0B";
+  let analysis = "市場穩定，建議維持高品質供貨。";
+
+  if (score >= 90) {
+    trendIcon = "🔥";
+    trendColor = "#27ae60"; // 綠色代表正向爆發
+    analysis = "需求爆發！建議立即佈署【黃金三角切法】支援。";
+  } else if (score < 70) {
+    trendIcon = "📉";
+    trendColor = "#e74c3c"; // 紅色代表預警
+    analysis = "熱度偏低，需加強品牌獨門秘方曝光。";
+  }
+
+  const interceptElem = document.getElementById('intercept-content');
+  if (interceptElem) {
+    interceptElem.innerHTML = `
+      <div style="font-size:12px; color:#888; margin-bottom:5px;">📡 ${source} ｜ ${cityName}</div>
+      <b style="font-size:1.15em;">${topic}</b>
+      <div style="font-size:42px; color:${trendColor}; font-weight:bold; margin: 10px 0;">
+        ${score} <span style="font-size:24px;">${trendIcon}</span>
+      </div>
+      <div style="color:${trendColor}; font-weight:bold; font-size:14px; border-left: 3px solid ${trendColor}; padding-left: 10px;">
+        AI 決策：${analysis}
+      </div>
+    `;
+  }
+
+  radarState.rankings[topic] = score;
+  const sorted = Object.entries(radarState.rankings).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  
+  let html = "<b style='font-size:1.1em;'>🔥 熱門排行榜</b><br><br>";
+  sorted.forEach((item, i) => {
+    let medal = ["🥇", "🥈", "🥉"][i] || "▪️";
+    html += `<div class="ranking-row"><span>${medal} ${item[0]}</span> <b>${item[1]}</b></div>`;
+  });
+
+  if (radarState.searchHistory.length > 0) {
+    html += `<div style="margin-top:15px; padding-top:10px; border-top:1px dashed #ddd; font-size:12px; color:#999;">
+      近期熱搜：${radarState.searchHistory.join("、")}
+    </div>`;
+  }
+
+  const rankingElem = document.getElementById('ranking-content');
+  if (rankingElem) rankingElem.innerHTML = html;
+}
+
+// ==========================================
+// 4. 資料橋樑 (Trigger)
+// ==========================================
+window.triggerScan = function(manualTopic = null) {
+  const inputElem = document.getElementById('keywordInput');
+  const inputValue = inputElem ? inputElem.value : "";
+  
+  const topic = manualTopic || inputValue || radarState.keywords[Math.floor(Math.random() * radarState.keywords.length)];
+  const score = Math.floor(Math.random() * 40) + 60;
+  
+  const source = radarState.sources[Math.floor(Math.random() * radarState.sources.length)];
+  const city = radarState.cities[Math.floor(Math.random() * radarState.cities.length)];
+
+  if (inputValue) {
+    if (!radarState.searchHistory.includes(inputValue)) {
+      radarState.searchHistory.unshift(inputValue);
+      if (radarState.searchHistory.length > 3) radarState.searchHistory.pop();
+    }
+    inputElem.value = ""; 
+  }
+
+  // Canvas 波紋：精準定位城市
   radarState.pings.push({
-    x: city.x,
-    y: city.y,
-    radius:0,
-    alpha:1
+    x: city.x, 
+    y: city.y, 
+    radius: 0, 
+    alpha: 1
   });
 
   updateDOM(topic, score, source, city.name);
-
-  document.getElementById('keywordInput').value="";
 }
 
-// 🔥 升級 updateDOM（但保留相容）
-function updateDOM(topic, score, source="系統", cityName="未知"){
+// 支援 Enter 鍵
+document.getElementById('keywordInput')?.addEventListener('keypress', (e) => {
+  if(e.key === 'Enter') triggerScan();
+});
 
-  let trendIcon="📊";
-  let trendColor="#F59E0B";
-  let text="市場穩定中";
+// 啟動系統
+requestAnimationFrame(drawRadar);
+triggerScan("系統初始化掃描...");
+setInterval(() => triggerScan(), 6000); // 每 6 秒自動掃描
 
-  if(score>=90){
-    trendIcon="🔥";
-    trendColor="green";
-    text="需求爆發，建議立即切入";
-  }else if(score<70){
-    trendIcon="📉";
-    trendColor="red";
-    text="熱度下降，建議觀察";
-  }
-
-  document.getElementById('intercept-content').innerHTML=`
-    <div style="font-size:12px;color:#888;">
-      📡 ${source}｜${cityName}
-    </div>
-    <b>${topic}</b>
-    <div style="font-size:36px;color:${trendColor}">
-      ${score} ${trendIcon}
-    </div>
-    ${text}
-  `;
-
-  // 🔥 排行榜（簡化安全版）
-  radarState.rankings[topic]=score;
-
-  const sorted = Object.entries(radarState.rankings)
-    .sort((a,b)=>b[1]-a[1])
-    .slice(0,5);
-
-  let html="";
-  sorted.forEach((item,i)=>{
-    html+=`<div class="ranking-row">
-      ${["🥇","🥈","🥉"][i]||""} ${item[0]} (${item[1]})
-    </div>`;
-  });
-
-  // 🔥 加搜尋紀錄
-  if(radarState.searchHistory.length>0){
-    html+=`<div style="margin-top:10px;font-size:12px;color:#999;">
-      熱搜：${radarState.searchHistory.join("、")}
-    </div>`;
-  }
-
-  document.getElementById("ranking-content").innerHTML=html;
-}
+</script>
+</body>
+</html>
