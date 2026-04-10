@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>XiangKe Fake Map</title>
+<title>XiangKe 修復版</title>
 
 <style>
 body {
@@ -17,8 +16,6 @@ header {
   padding:15px;
   background:white;
   border-bottom:1px solid #eee;
-  display:flex;
-  justify-content:space-between;
 }
 
 .hero {
@@ -27,8 +24,8 @@ header {
 }
 
 #map {
-  height:500px;
-  background:url('https://upload.wikimedia.org/wikipedia/commons/7/79/Taiwan_location_map.svg') center/contain no-repeat;
+  height:400px;
+  background:#eee;
   position:relative;
 }
 
@@ -39,21 +36,16 @@ header {
   position:absolute;
   transform:translate(-50%,-50%);
   cursor:pointer;
-  animation:pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0% {transform:translate(-50%,-50%) scale(1);}
-  50% {transform:translate(-50%,-50%) scale(1.5);}
-  100% {transform:translate(-50%,-50%) scale(1);}
 }
 
 main {
   display:grid;
-  grid-template-columns:1fr 320px;
+  grid-template-columns:1fr 300px;
 }
 
-.panel { padding:20px; }
+.panel {
+  padding:20px;
+}
 
 .card {
   background:white;
@@ -67,8 +59,7 @@ main {
 <body>
 
 <header>
-  <div>🍽️ 饗客智擎</div>
-  <div>● 模擬地圖雷達</div>
+  <b>🍽️ 饗客智擎（修復版）</b>
 </header>
 
 <section class="hero">
@@ -83,74 +74,67 @@ main {
 </div>
 
 <div class="panel">
-  <div id="mainResult" class="card">等待分析...</div>
+  <div id="mainResult" class="card">系統已恢復 ✅</div>
 </div>
 
 </main>
 
 <script>
 
-const cities=[
-  {name:"台北",x:50,y:20},
-  {name:"台中",x:45,y:45},
-  {name:"高雄",x:48,y:75}
+// 固定三個點（不動）
+const points = [
+  {name:"台北", x:50, y:20},
+  {name:"台中", x:45, y:45},
+  {name:"高雄", x:48, y:75}
 ];
 
-const foods=["雞排","飲料","火鍋","甜點"];
+// 初始化畫面
+window.onload = function(){
 
-// 🔥 主結果
+  const map = document.getElementById("map");
+
+  points.forEach(p=>{
+    const dot = document.createElement("div");
+    dot.className = "dot";
+    dot.style.left = p.x + "%";
+    dot.style.top = p.y + "%";
+    dot.style.background = "orange";
+
+    dot.onclick = ()=>{
+      showResult(p.name);
+    };
+
+    map.appendChild(dot);
+  });
+
+};
+
+// 顯示結果（最簡版）
 function showResult(text){
 
   const score = Math.floor(Math.random()*40)+60;
 
-  document.getElementById("mainResult").innerHTML=`
+  document.getElementById("mainResult").innerHTML = `
     <b>${text}</b><br>
-    <div style="font-size:30px;color:#F59E0B">${score}分</div>
-    市場熱度上升
+    <div style="font-size:28px;color:#F59E0B">${score}分</div>
+    系統正常運作
   `;
 }
-
-// 🔥 生成點
-function spawn(){
-
-  const map=document.getElementById("map");
-
-  const city=cities[Math.floor(Math.random()*cities.length)];
-  const food=foods[Math.floor(Math.random()*foods.length)];
-
-  const dot=document.createElement("div");
-  dot.className="dot";
-
-  dot.style.left=city.x+"%";
-  dot.style.top=city.y+"%";
-
-  dot.style.background=Math.random()>0.5?"green":"red";
-
-  dot.onclick=()=>{
-    showResult(city.name+"｜"+food);
-  };
-
-  map.appendChild(dot);
-
-  setTimeout(()=>dot.remove(),3000);
-}
-
-setInterval(spawn,2000);
 
 // 搜尋
 function searchKeyword(){
 
-  const input=document.getElementById("keywordInput").value;
+  const input = document.getElementById("keywordInput").value;
   if(!input) return;
 
-  showResult("🔍 "+input);
+  showResult("🔍 " + input);
 }
 
 // Enter
 document.getElementById("keywordInput")
-  .addEventListener("keypress",function(e){
+  .addEventListener("keypress", function(e){
     if(e.key==="Enter") searchKeyword();
-});
+  });
 
 </script>
 
