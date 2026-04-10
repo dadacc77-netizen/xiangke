@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XiangKe 修復版</title>
+<title>XiangKe 成品版</title>
 
 <style>
 body {
@@ -25,17 +25,24 @@ header {
 
 #map {
   height:400px;
-  background:#eee;
+  background:#f3f3f3;
   position:relative;
 }
 
 .dot {
-  width:12px;
-  height:12px;
+  width:14px;
+  height:14px;
   border-radius:50%;
   position:absolute;
   transform:translate(-50%,-50%);
   cursor:pointer;
+  animation:pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {transform:translate(-50%,-50%) scale(1);}
+  50% {transform:translate(-50%,-50%) scale(1.6);}
+  100% {transform:translate(-50%,-50%) scale(1);}
 }
 
 main {
@@ -52,6 +59,12 @@ main {
   padding:15px;
   border-radius:10px;
   margin-bottom:10px;
+  animation:fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {opacity:0; transform:translateY(10px);}
+  to {opacity:1; transform:translateY(0);}
 }
 </style>
 </head>
@@ -59,7 +72,7 @@ main {
 <body>
 
 <header>
-  <b>🍽️ 饗客智擎（修復版）</b>
+  <b>🍽️ 饗客智擎（完成版）</b>
 </header>
 
 <section class="hero">
@@ -74,67 +87,98 @@ main {
 </div>
 
 <div class="panel">
-  <div id="mainResult" class="card">系統已恢復 ✅</div>
+  <div id="mainResult" class="card">系統運作中...</div>
+  <div id="ranking" class="card">🔥 排行榜</div>
 </div>
 
 </main>
 
 <script>
 
-// 固定三個點（不動）
-const points = [
-  {name:"台北", x:50, y:20},
-  {name:"台中", x:45, y:45},
-  {name:"高雄", x:48, y:75}
+const cities=[
+  {name:"台北",x:50,y:20},
+  {name:"台中",x:45,y:45},
+  {name:"高雄",x:48,y:75}
 ];
 
-// 初始化畫面
-window.onload = function(){
+const foods=["雞排","飲料","火鍋","甜點"];
 
-  const map = document.getElementById("map");
+let rankingData={};
 
-  points.forEach(p=>{
-    const dot = document.createElement("div");
-    dot.className = "dot";
-    dot.style.left = p.x + "%";
-    dot.style.top = p.y + "%";
-    dot.style.background = "orange";
-
-    dot.onclick = ()=>{
-      showResult(p.name);
-    };
-
-    map.appendChild(dot);
-  });
-
-};
-
-// 顯示結果（最簡版）
-function showResult(text){
+// 🔥 顯示結果
+function showResult(title){
 
   const score = Math.floor(Math.random()*40)+60;
 
-  document.getElementById("mainResult").innerHTML = `
-    <b>${text}</b><br>
-    <div style="font-size:28px;color:#F59E0B">${score}分</div>
-    系統正常運作
+  document.getElementById("mainResult").innerHTML=`
+    <b>${title}</b><br>
+    <div style="font-size:30px;color:#F59E0B">${score}分</div>
+    市場熱度上升
   `;
+
+  updateRanking(title,score);
 }
 
-// 搜尋
+// 📊 排行榜
+function updateRanking(name,score){
+
+  rankingData[name]=score;
+
+  const sorted = Object.entries(rankingData)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,5);
+
+  let html="<b>🔥 熱門排行榜</b><br>";
+
+  sorted.forEach((item,i)=>{
+    html+=`${i+1}. ${item[0]} (${item[1]}分)<br>`;
+  });
+
+  document.getElementById("ranking").innerHTML=html;
+}
+
+// 🔥 動態點（雷達感）
+function spawn(){
+
+  const map=document.getElementById("map");
+
+  const city=cities[Math.floor(Math.random()*cities.length)];
+  const food=foods[Math.floor(Math.random()*foods.length)];
+
+  const dot=document.createElement("div");
+  dot.className="dot";
+
+  dot.style.left=city.x+"%";
+  dot.style.top=city.y+"%";
+
+  dot.style.background=Math.random()>0.5?"green":"red";
+
+  dot.onclick=()=>{
+    showResult(city.name+"｜"+food);
+  };
+
+  map.appendChild(dot);
+
+  setTimeout(()=>dot.remove(),3000);
+}
+
+// ❗ 控制頻率（穩定）
+setInterval(spawn,2000);
+
+// 🔍 搜尋
 function searchKeyword(){
 
-  const input = document.getElementById("keywordInput").value;
+  const input=document.getElementById("keywordInput").value;
   if(!input) return;
 
-  showResult("🔍 " + input);
+  showResult("🔍 "+input);
 }
 
 // Enter
 document.getElementById("keywordInput")
-  .addEventListener("keypress", function(e){
+  .addEventListener("keypress",function(e){
     if(e.key==="Enter") searchKeyword();
-  });
+});
 
 </script>
 
